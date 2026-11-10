@@ -1,50 +1,43 @@
 /* Checklist+ styles, modeled on Trello's native checklist (Atlassian design
-   tokens, light and dark). The theme follows Trello via data-theme. */
+   tokens, light and dark). The theme follows Trello via data-theme.
+   Backgrounds are transparent so Trello's own card background shows through. */
 
 :root {
-  --cp-bg: #ffffff;
+  color-scheme: light;
   --cp-text: #172b4d;
   --cp-text-subtle: #44546f;
   --cp-text-subtlest: #626f86;
   --cp-neutral: rgba(9, 30, 66, 0.06);
   --cp-neutral-hover: rgba(9, 30, 66, 0.14);
-  --cp-row-hover: rgba(9, 30, 66, 0.06);
   --cp-border-input: #8590a2;
   --cp-focus: #388bff;
   --cp-primary: #0c66e4;
   --cp-primary-text: #ffffff;
   --cp-progress: #0c66e4;
-  --cp-success: #1f845a;
-  --cp-success-text: #ffffff;
-  --cp-danger: #c9372c;
-  --cp-danger-text: #ffffff;
-  --cp-warning: #f5cd47;
-  --cp-warning-text: #172b4d;
+  --cp-progress-done: #1f845a;
+  --cp-success-text: #216e4e;
+  --cp-danger-text: #ae2e24;
+  --cp-warning-text: #7f5f01;
   --cp-error-bg: #ffeceb;
-  --cp-error-text: #ae2e24;
 }
 
 :root[data-theme="dark"] {
-  --cp-bg: #22272b;
+  color-scheme: dark;
   --cp-text: #b6c2cf;
   --cp-text-subtle: #9fadbc;
   --cp-text-subtlest: #8c9bab;
   --cp-neutral: rgba(161, 189, 217, 0.08);
   --cp-neutral-hover: rgba(166, 197, 226, 0.16);
-  --cp-row-hover: rgba(161, 189, 217, 0.08);
   --cp-border-input: #738496;
   --cp-focus: #85b8ff;
   --cp-primary: #579dff;
   --cp-primary-text: #1d2125;
   --cp-progress: #579dff;
-  --cp-success: #4bce97;
-  --cp-success-text: #1d2125;
-  --cp-danger: #f87168;
-  --cp-danger-text: #1d2125;
-  --cp-warning: #f5cd47;
-  --cp-warning-text: #1d2125;
+  --cp-progress-done: #4bce97;
+  --cp-success-text: #7ee2b8;
+  --cp-danger-text: #fd9891;
+  --cp-warning-text: #f5cd47;
   --cp-error-bg: #42221f;
-  --cp-error-text: #fd9891;
 }
 
 * { box-sizing: border-box; }
@@ -52,7 +45,7 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--cp-bg);
+  background: transparent;
   color: var(--cp-text);
   font: 14px/20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", Ubuntu, "Droid Sans", "Helvetica Neue", sans-serif;
 }
@@ -62,6 +55,9 @@ button, input, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--cp-focus); outline-offset: 1px; }
 
 .cp-icon { width: 16px; height: 16px; flex: none; }
+
+/* Small side padding so focus rings and the last text column are not clipped. */
+#cp-root { padding: 2px 4px 8px 2px; }
 
 /* ---------- Buttons (Trello style) ---------- */
 
@@ -84,15 +80,15 @@ button, input, textarea { font: inherit; color: inherit; }
 
 .cp-error {
   background: var(--cp-error-bg);
-  color: var(--cp-error-text);
+  color: var(--cp-danger-text);
   border-radius: 3px;
   padding: 6px 10px;
-  margin: 0 0 8px;
+  margin: 0 0 12px;
 }
 
 /* ---------- Checklist ---------- */
 
-.cp-list { margin-bottom: 24px; }
+.cp-list { margin-bottom: 32px; }
 
 .cp-list-header {
   display: flex;
@@ -100,7 +96,6 @@ button, input, textarea { font: inherit; color: inherit; }
   gap: 12px;
   min-height: 32px;
 }
-.cp-list-icon { display: flex; color: var(--cp-text-subtle); width: 24px; justify-content: center; }
 .cp-list-title {
   flex: 1 1 auto;
   margin: 0;
@@ -115,15 +110,10 @@ button, input, textarea { font: inherit; color: inherit; }
 .cp-progress {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 6px 0 4px;
+  gap: 10px;
+  margin: 10px 0 12px;
 }
-.cp-progress-pct {
-  width: 28px;
-  font-size: 11px;
-  color: var(--cp-text-subtle);
-  text-align: center;
-}
+.cp-progress-pct { width: 30px; font-size: 11px; color: var(--cp-text-subtle); }
 .cp-progress-track {
   flex: 1 1 auto;
   height: 8px;
@@ -132,12 +122,12 @@ button, input, textarea { font: inherit; color: inherit; }
   overflow: hidden;
 }
 .cp-progress-fill { height: 100%; background: var(--cp-progress); border-radius: 4px; transition: width 0.2s; }
-.cp-progress-fill.is-complete { background: var(--cp-success); }
+.cp-progress-fill.is-complete { background: var(--cp-progress-done); }
 
 .cp-summary {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
   flex: none;
   font-size: 12px;
   color: var(--cp-text-subtle);
@@ -148,89 +138,78 @@ button, input, textarea { font: inherit; color: inherit; }
   color: var(--cp-text-subtle);
   font-size: 12px;
   font-weight: 600;
-  padding: 2px 4px;
-  border-radius: 3px;
+  padding: 0;
   cursor: pointer;
 }
-.cp-client:hover { background: var(--cp-neutral-hover); }
+.cp-client:hover { text-decoration: underline; }
 .cp-client.is-derived { font-weight: 400; }
 
-/* ---------- Item row ---------- */
+/* ---------- Item: two lines (text, then dates/worked days) ---------- */
 
 .cp-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 6px 4px 6px 4px;
-  border-radius: 12px;
-  min-height: 36px;
+  gap: 12px;
+  padding: 10px 0;
 }
-.cp-item:hover, .cp-item:focus-within { background: var(--cp-row-hover); }
+.cp-item + .cp-item { border-top: 1px solid var(--cp-neutral); }
 
 .cp-check {
   width: 16px;
   height: 16px;
-  margin: 2px 12px 0 4px;
+  margin: 2px 0 0;
   flex: none;
   accent-color: var(--cp-primary);
   cursor: pointer;
 }
 
-.cp-item-text {
-  flex: 1 1 auto;
-  min-width: 0;
-  padding-top: 0;
-  cursor: pointer;
-  word-break: break-word;
-}
+.cp-item-content { flex: 1 1 auto; min-width: 0; }
+.cp-item-text { cursor: pointer; word-break: break-word; }
 .cp-item.is-done .cp-item-text { text-decoration: line-through; color: var(--cp-text-subtle); }
 
-.cp-item-actions {
+.cp-item-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  flex: none;
-}
-
-/* Chips: worked days, deadline, warnings */
-.cp-chip, .cp-effort {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  height: 24px;
-  padding: 0 6px;
-  border: 0;
-  border-radius: 3px;
+  gap: 4px 18px;
+  margin-top: 6px;
   font-size: 12px;
   line-height: 16px;
-  white-space: nowrap;
-  background: var(--cp-neutral);
-  color: var(--cp-text-subtle);
 }
-button.cp-chip { cursor: pointer; }
-button.cp-chip:hover { filter: brightness(1.1); }
 
-.cp-chip.is-done { background: var(--cp-success); color: var(--cp-success-text); }
-.cp-chip.is-late { background: var(--cp-danger); color: var(--cp-danger-text); }
-.cp-chip.is-soon { background: var(--cp-warning); color: var(--cp-warning-text); }
-.cp-chip.is-warn { background: var(--cp-warning); color: var(--cp-warning-text); font-weight: 700; cursor: help; }
+.cp-meta { display: inline-flex; align-items: center; gap: 4px; color: var(--cp-text-subtle); white-space: nowrap; }
+.cp-meta-label { color: var(--cp-text-subtlest); }
+.cp-meta-value { color: var(--cp-text); font-weight: 500; }
+.cp-meta-value.is-empty { color: var(--cp-text-subtlest); font-weight: 400; }
 
-.cp-effort { padding: 0 2px; }
-.cp-effort-value { padding: 0 4px; }
-.cp-effort-btn {
+.cp-meta-link { border: 0; background: transparent; padding: 0; cursor: pointer; font-size: inherit; line-height: inherit; }
+.cp-meta-link:hover .cp-meta-value { text-decoration: underline; }
+
+/* Deadline status, as text color only (no colored backgrounds). */
+.cp-meta-link.is-done .cp-meta-value { color: var(--cp-success-text); }
+.cp-meta-link.is-late .cp-meta-value { color: var(--cp-danger-text); }
+.cp-meta-link.is-soon .cp-meta-value { color: var(--cp-warning-text); }
+
+.cp-deviation { font-weight: 600; }
+.cp-deviation.is-done { color: var(--cp-success-text); }
+.cp-deviation.is-late { color: var(--cp-danger-text); }
+.cp-warn { color: var(--cp-warning-text); font-weight: 600; cursor: help; }
+
+.cp-step {
   border: 0;
   background: transparent;
-  color: inherit;
-  width: 20px;
-  height: 20px;
+  color: var(--cp-text-subtle);
+  width: 18px;
+  height: 18px;
+  padding: 0;
   border-radius: 3px;
   font-weight: 700;
   cursor: pointer;
-  padding: 0;
 }
-.cp-effort-btn:hover { background: var(--cp-neutral-hover); }
+.cp-step:hover { background: var(--cp-neutral-hover); color: var(--cp-text); }
 
-/* Avatar and "..." menu */
+.cp-item-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+
 .cp-avatar, .cp-more {
   width: 24px;
   height: 24px;
@@ -245,13 +224,13 @@ button.cp-chip:hover { filter: brightness(1.1); }
   color: #ffffff;
   cursor: pointer;
 }
-.cp-avatar.is-empty, .cp-more { background: var(--cp-neutral); color: var(--cp-text-subtle); }
+.cp-avatar.is-empty, .cp-more { background: transparent; color: var(--cp-text-subtle); }
 .cp-avatar.is-empty:hover, .cp-more:hover { background: var(--cp-neutral-hover); }
 
-/* Keep rows clean: empty controls and +/- appear only on hover or focus. */
-.cp-item:not(:hover):not(:focus-within) .is-empty,
-.cp-item:not(:hover):not(:focus-within) .cp-effort-btn,
-.cp-item:not(:hover):not(:focus-within) .cp-more { display: none; }
+/* Secondary controls appear on hover/focus without shifting the layout. */
+.cp-item:not(:hover):not(:focus-within) .cp-step,
+.cp-item:not(:hover):not(:focus-within) .cp-more,
+.cp-item:not(:hover):not(:focus-within) .cp-avatar.is-empty { visibility: hidden; }
 
 /* ---------- Inline editors (item text, title, new item) ---------- */
 
@@ -263,23 +242,21 @@ button.cp-chip:hover { filter: brightness(1.1); }
   padding: 8px 12px;
   border: 1px solid var(--cp-border-input);
   border-radius: 3px;
-  background: var(--cp-bg);
+  background: transparent;
   box-shadow: inset 0 0 0 1px var(--cp-focus);
 }
 .cp-edit-actions { display: flex; gap: 4px; margin-top: 8px; }
 
-.cp-add-btn { margin: 8px 0 0 40px; }
-.cp-add-form { margin: 8px 0 0 40px; }
+.cp-add-btn, .cp-add-form { margin-top: 8px; }
 .cp-new-list-btn { margin-top: 4px; }
 
 .cp-size { margin-top: 8px; font-size: 11px; color: var(--cp-text-subtlest); }
-.cp-size.is-warn { color: var(--cp-error-text); }
+.cp-size.is-warn { color: var(--cp-danger-text); }
 
 /* ---------- Dates popover ---------- */
 
-.cp-popup-body { background: var(--cp-bg); }
 .cp-popup { padding: 0 12px 12px; }
-.cp-popup-field { display: block; margin-bottom: 10px; }
+.cp-popup-field { display: block; margin-bottom: 12px; }
 .cp-popup-field span {
   display: block;
   font-size: 12px;
@@ -293,8 +270,6 @@ button.cp-chip:hover { filter: brightness(1.1); }
   padding: 6px 8px;
   border: 1px solid var(--cp-border-input);
   border-radius: 3px;
-  background: var(--cp-bg);
-  color-scheme: light;
+  background: transparent;
 }
-:root[data-theme="dark"] .cp-popup-field input { color-scheme: dark; }
 .cp-popup-info { font-size: 12px; color: var(--cp-text-subtle); margin: 4px 0 8px; }
