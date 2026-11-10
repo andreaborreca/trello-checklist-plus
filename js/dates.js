@@ -73,9 +73,12 @@
     document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
   }
 
+  // Theme passed by the card section (the popover context may not carry it),
+  // falling back to Trello's context.
   try {
     var ctx = t.getContext() || {};
-    applyTheme(ctx.theme || ctx.initialTheme);
+    var passed = t.arg('th');
+    applyTheme(passed === 'dark' || passed === 'light' ? passed : (ctx.theme || ctx.initialTheme));
   } catch (e) { applyTheme('light'); }
 
   if (!ID_RE.test(listId || '') || !ID_RE.test(itemId || '')) {

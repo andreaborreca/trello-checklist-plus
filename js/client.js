@@ -12,7 +12,7 @@
   var calc = window.CP.calc;
 
   // Absolute URL of the gray icon (Trello requires gray icons on the card back).
-  var ICON = new URL('./img/icon.svg?v=1.3.1', window.location.href).href;
+  var ICON = new URL('./img/icon.svg?v=1.4.0', window.location.href).href;
 
   TrelloPowerUp.initialize({
     /**

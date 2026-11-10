@@ -23,6 +23,7 @@
   var wd = window.CP.workdays;
 
   var state = store.emptyState();
+  var currentTheme = 'light';
   var members = [];
   var cardId = '';
   // Custom holidays (patron saint, company days): configurable in phase 2.
@@ -65,11 +66,14 @@
   }
 
   // Fixed icon paths (24x24 viewBox). Never built from user data.
+  // Filled icons.
   var ICONS = {
-    clock: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zm-1 3v6l5 3 1-1.7-4-2.3V7h-2z',
-    checklist: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v14h14V5H5zm5.3 10.7L7 12.4l1.4-1.4 1.9 1.9 5.3-5.3L17 9l-6.7 6.7z',
     person: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5z',
-    dots: 'M6 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z'
+    dots: 'M6 10.2a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6zm6 0a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6zm6 0a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6z'
+  };
+  // Outline icons (stroke), closer to Trello's own line icons.
+  var STROKE_ICONS = {
+    clock: 'M12 3.75a8.25 8.25 0 1 0 0 16.5 8.25 8.25 0 1 0 0-16.5zM12 7.5V12l3 2'
   };
 
   function icon(name) {
@@ -77,10 +81,19 @@
     var svg = document.createElementNS(ns, 'svg');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('aria-hidden', 'true');
-    svg.setAttribute('class', 'cp-icon');
+    svg.setAttribute('class', 'cp-icon cp-icon-' + name);
     var path = document.createElementNS(ns, 'path');
-    path.setAttribute('d', ICONS[name]);
-    path.setAttribute('fill', 'currentColor');
+    if (STROKE_ICONS[name]) {
+      path.setAttribute('d', STROKE_ICONS[name]);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', 'currentColor');
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin', 'round');
+    } else {
+      path.setAttribute('d', ICONS[name]);
+      path.setAttribute('fill', 'currentColor');
+    }
     svg.appendChild(path);
     return svg;
   }
@@ -213,7 +226,8 @@
     return popup(ctx, {
       title: 'Date',
       url: './dates.html',
-      args: { l: list.i, i: item.i },
+      // The popover may not receive the theme from Trello: pass ours along.
+      args: { l: list.i, i: item.i, th: currentTheme },
       height: 300
     }, ev);
   }
@@ -337,6 +351,25 @@
     return ((parts[0] || '?')[0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
   }
 
+  // Hosts Trello uses for member profile photos. Anything else is ignored.
+  var AVATAR_HOSTS = ['trello-members.s3.amazonaws.com', '.trello.com', '.trellocdn.com', '.atl-paas.net'];
+
+  /** Safe https URL of the member's profile photo, or '' when there is none. */
+  function avatarUrl(member) {
+    var raw = member && (member.avatar || member.avatarUrl);
+    if (typeof raw !== 'string' || !raw) return '';
+    try {
+      var u = new URL(raw);
+      var host = u.hostname;
+      var allowed = u.protocol === 'https:' && AVATAR_HOSTS.some(function (h) {
+        return h.charAt(0) === '.' ? host.slice(-h.length) === h : host === h;
+      });
+      if (!allowed) return '';
+      // Base avatar URLs need a size suffix; full image URLs are used as they are.
+      return /\.(png|jpe?g|gif|webp)$/i.test(u.pathname) ? u.href : u.href.replace(/\/$/, '') + '/50.png';
+    } catch (e) { return ''; }
+  }
+
   function avatarColor(id) {
     var palette = ['#ae2e24', '#a54800', '#7f5f01', '#216e4e', '#206a83', '#0055cc', '#5e4db2', '#943d73'];
     var h = 0;
@@ -439,8 +472,14 @@
       on: { click: function (ev) { openMembers(t, ev, list, item); } }
     });
     if (member) {
-      btn.textContent = initials(member.fullName || member.username);
-      btn.style.backgroundColor = avatarColor(member.id);
+      var photo = avatarUrl(member);
+      if (photo) {
+        // Profile photo, as Trello shows it.
+        btn.appendChild(el('img', { cls: 'cp-avatar-img', attrs: { src: photo, alt: '', referrerpolicy: 'no-referrer' } }));
+      } else {
+        btn.textContent = member.initials ? String(member.initials).slice(0, 3).toUpperCase() : initials(member.fullName || member.username);
+        btn.style.backgroundColor = avatarColor(member.id);
+      }
     } else {
       btn.appendChild(icon('person'));
     }
@@ -569,17 +608,18 @@
       })
     ]);
 
+    // No left gutter: the section already sits where Trello starts its
+    // content, so title and bar start at the very left edge.
     var header = el('div', { cls: 'cp-row cp-list-header' }, [
-      el('div', { cls: 'cp-gutter' }, [icon('checklist')]),
       el('div', { cls: 'cp-list-head' }, [titleNode, headerRight])
     ]);
 
     var fill = el('div', { cls: 'cp-progress-fill' + (pct === 100 ? ' is-complete' : '') });
     fill.style.width = pct + '%';
     var progress = el('div', { cls: 'cp-row cp-progress' }, [
-      el('div', { cls: 'cp-gutter cp-progress-pct', text: pct + '%' }),
       el('div', { cls: 'cp-progress-track', attrs: { role: 'progressbar', 'aria-valuenow': String(pct), 'aria-valuemin': '0', 'aria-valuemax': '100' } }, [fill]),
       el('div', { cls: 'cp-summary', attrs: { title: summaryTip.join(' · ') } }, [
+        el('span', { cls: 'cp-progress-pct', text: pct + '%' }),
         el('button', {
           cls: 'cp-client' + (client.derived ? ' is-derived' : ''),
           text: client.value || 'Cliente',
@@ -668,7 +708,8 @@
   /* ------------------------------------------------------------------ */
 
   function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
+    currentTheme = theme === 'dark' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', currentTheme);
   }
 
   try {
