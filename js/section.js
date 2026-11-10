@@ -66,10 +66,8 @@
 
   // Fixed icon paths (24x24 viewBox). Never built from user data.
   var ICONS = {
-    clock: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zm-1 3v6l5 3 1-1.7-4-2.3V7h-2z',
     person: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5z',
-    dots: 'M6 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z',
-    checklist: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v14h14V5H5zm5.3 10.7L7 12.4l1.4-1.4 1.9 1.9 5.3-5.3L17 9l-6.7 6.7z'
+    dots: 'M6 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z'
   };
 
   function icon(name) {
@@ -367,18 +365,14 @@
     return box;
   }
 
-  function effortChip(list, item) {
+  /** Worked days in the meta line: "5 gg" with -/+ shown on hover. */
+  function effortField(list, item) {
     var key = list.i + ':' + item.i;
     function current() { return Math.max(0, (item.w || 0) + (pendingEffort[key] || 0)); }
 
-    var valueEl = el('span', { cls: 'cp-effort-value', attrs: { 'aria-live': 'polite' } });
-    var chip = el('span', { cls: 'cp-effort' });
+    var valueEl = el('span', { cls: 'cp-meta-value', attrs: { 'aria-live': 'polite' } });
 
-    function paint() {
-      var v = current();
-      valueEl.textContent = calc.fmtNumber(v) + ' gg';
-      chip.classList.toggle('is-empty', v === 0);
-    }
+    function paint() { valueEl.textContent = calc.fmtNumber(current()) + ' gg'; }
 
     function step(delta) {
       if (current() + delta < 0) return;
@@ -387,31 +381,47 @@
       scheduleEffortFlush();
     }
 
-    chip.appendChild(el('button', { cls: 'cp-effort-btn', text: '−', attrs: { type: 'button', title: 'Togli mezza giornata', 'aria-label': 'Togli mezza giornata' }, on: { click: function () { step(-0.5); } } }));
-    chip.appendChild(valueEl);
-    chip.appendChild(el('button', { cls: 'cp-effort-btn', text: '+', attrs: { type: 'button', title: 'Aggiungi mezza giornata', 'aria-label': 'Aggiungi mezza giornata' }, on: { click: function () { step(0.5); } } }));
     paint();
-    return chip;
+    return el('span', { cls: 'cp-meta cp-effort' }, [
+      el('span', { cls: 'cp-meta-label', text: 'Lavorati' }),
+      valueEl,
+      el('button', { cls: 'cp-step', text: '−', attrs: { type: 'button', title: 'Togli mezza giornata', 'aria-label': 'Togli mezza giornata' }, on: { click: function () { step(-0.5); } } }),
+      el('button', { cls: 'cp-step', text: '+', attrs: { type: 'button', title: 'Aggiungi mezza giornata', 'aria-label': 'Aggiungi mezza giornata' }, on: { click: function () { step(0.5); } } })
+    ]);
   }
 
-  function dueChip(list, item, metrics) {
+  /**
+   * The three dates, always visible as plain text links (no colored
+   * backgrounds). Each opens the dates popover. The deadline text takes
+   * Trello's status color; the deviation is shown next to the end date.
+   */
+  function dateFields(list, item, metrics) {
     var status = calc.dueStatus(item, wd.todayIso(), holidays);
-    var hasAnyDate = !!(item.s || item.dl || item.e);
-    var label = item.dl ? calc.fmtChipDate(item.dl) : (hasAnyDate ? 'Date' : '');
+    function open(ev) { openDates(t, ev, list, item); }
 
-    var tip = [];
-    if (item.s) tip.push('Inizio ' + calc.fmtShortDate(item.s));
-    if (item.dl) tip.push('Deadline ' + calc.fmtShortDate(item.dl));
-    if (item.e) tip.push('Fine ' + calc.fmtShortDate(item.e));
-    if (metrics.deviation !== null) tip.push(calc.fmtDeviation(metrics.deviation));
+    function field(label, iso, extraCls) {
+      return el('button', {
+        cls: 'cp-meta cp-meta-link' + (extraCls || ''),
+        attrs: { type: 'button', title: 'Modifica le date' },
+        on: { click: open }
+      }, [
+        el('span', { cls: 'cp-meta-label', text: label }),
+        el('span', { cls: 'cp-meta-value' + (iso ? '' : ' is-empty'), text: iso ? calc.fmtChipDate(iso) : '—' })
+      ]);
+    }
 
-    var btn = el('button', {
-      cls: 'cp-chip cp-due' + (status ? ' is-' + status : '') + (hasAnyDate ? '' : ' is-empty'),
-      attrs: { type: 'button', title: tip.length ? tip.join(' · ') : 'Imposta le date', 'aria-label': 'Date: ' + (tip.join(', ') || 'nessuna') },
-      on: { click: function (ev) { openDates(t, ev, list, item); } }
-    }, [icon('clock')]);
-    if (label) btn.appendChild(el('span', { text: label }));
-    return btn;
+    var nodes = [
+      field('Inizio', item.s),
+      field('Deadline', item.dl, status ? ' is-' + status : ''),
+      field('Fine', item.e)
+    ];
+    if (metrics.deviation !== null) {
+      nodes.push(el('span', {
+        cls: 'cp-meta cp-deviation ' + (metrics.deviation > 0 ? 'is-late' : 'is-done'),
+        text: calc.fmtDeviation(metrics.deviation)
+      }));
+    }
+    return nodes;
   }
 
   function avatarButton(list, item) {
@@ -469,12 +479,17 @@
       });
     }
 
-    var actions = isEditing ? null : el('div', { cls: 'cp-item-actions' }, [
+    // Second line under the text: all dates, worked days, warnings.
+    var meta = isEditing ? null : el('div', { cls: 'cp-item-meta' }, dateFields(list, item, metrics).concat([
+      effortField(list, item),
       metrics.warnings.length
-        ? el('span', { cls: 'cp-chip is-warn', text: '!', attrs: { title: metrics.warnings.join('\n'), 'aria-label': metrics.warnings.join('. ') } })
-        : null,
-      effortChip(list, item),
-      dueChip(list, item, metrics),
+        ? el('span', { cls: 'cp-meta cp-warn', text: '! da verificare', attrs: { title: metrics.warnings.join('\n') } })
+        : null
+    ]));
+
+    var content = el('div', { cls: 'cp-item-content' }, [body, meta]);
+
+    var actions = isEditing ? null : el('div', { cls: 'cp-item-actions' }, [
       avatarButton(list, item),
       el('button', {
         cls: 'cp-more',
@@ -483,7 +498,7 @@
       }, [icon('dots')])
     ]);
 
-    var row = el('div', { cls: 'cp-item' + (item.d ? ' is-done' : '') + (isEditing ? ' is-editing' : '') }, [checkbox, body, actions]);
+    var row = el('div', { cls: 'cp-item' + (item.d ? ' is-done' : '') + (isEditing ? ' is-editing' : '') }, [checkbox, content, actions]);
     return row;
   }
 
@@ -510,7 +525,6 @@
       });
 
     var header = el('div', { cls: 'cp-list-header' }, [
-      el('span', { cls: 'cp-list-icon' }, [icon('checklist')]),
       titleNode,
       isEditingTitle ? null : el('div', { cls: 'cp-list-actions' }, [
         tot.done > 0 ? el('button', {
@@ -555,9 +569,9 @@
         }),
         tot.effort ? el('span', { cls: 'cp-summary-effort', text: calc.fmtNumber(tot.effort) + ' gg' }) : null,
         tot.deviation !== null
-          ? el('span', { cls: 'cp-chip ' + (tot.deviation > 0 ? 'is-late' : 'is-done'), text: calc.fmtDeviation(tot.deviation) })
+          ? el('span', { cls: 'cp-deviation ' + (tot.deviation > 0 ? 'is-late' : 'is-done'), text: calc.fmtDeviation(tot.deviation) })
           : null,
-        tot.warnings ? el('span', { cls: 'cp-chip is-warn', text: '!', attrs: { title: tot.warnings + ' elementi da verificare' } }) : null
+        tot.warnings ? el('span', { cls: 'cp-warn', text: '! ' + tot.warnings, attrs: { title: tot.warnings + ' elementi da verificare' } }) : null
       ])
     ]);
 
