@@ -1,3 +1,9 @@
+/* Inter (SIL Open Font License, see fonts/OFL-LICENSE.txt): its metrics match
+   the text measured in Trello's checklist. Self-hosted: no third-party requests. */
+@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.4.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.4.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.4.0") format("woff2"); }
+
 /* Checklist+ styles, matched to Trello's native checklist.
    Dark values are sampled from Trello's current dark theme; light values
    follow the same structure. Backgrounds are transparent so Trello's own
@@ -5,7 +11,7 @@
 
 :root {
   color-scheme: light;
-  --cp-gutter: 28px;               /* checkbox / icon / percentage column */
+  --cp-gutter: 28px;               /* checkbox column */
   --cp-text: #292a2e;
   --cp-text-subtle: #505258;
   --cp-text-subtlest: #6b6e76;
@@ -53,7 +59,7 @@ html, body {
   padding: 0;
   background: transparent;
   color: var(--cp-text);
-  font: 14px/20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", Ubuntu, "Droid Sans", "Helvetica Neue", sans-serif;
+  font: 14px/20px "CP Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", Ubuntu, "Droid Sans", "Helvetica Neue", sans-serif;
 }
 
 button, input, textarea { font: inherit; color: inherit; }
@@ -67,9 +73,9 @@ button, input, textarea { font: inherit; color: inherit; }
 
 .cp-btn {
   border: 1px solid var(--cp-border);
-  border-radius: 4px;
+  border-radius: 6px;
   background: transparent;
-  color: var(--cp-text);
+  color: var(--cp-text-subtle);
   font-weight: 500;
   padding: 5px 12px;
   line-height: 20px;
@@ -111,7 +117,7 @@ button, input, textarea { font: inherit; color: inherit; }
   flex: 1 1 120px;
   min-width: 120px;
   margin: 0;
-  font-size: 16px;
+  font-size: 14px;
   line-height: 20px;
   font-weight: 600;
   cursor: pointer;
@@ -142,6 +148,7 @@ button, input, textarea { font: inherit; color: inherit; }
 
 .cp-progress { align-items: center; margin: 10px 0 8px; }
 .cp-progress-pct { font-size: 11px; color: var(--cp-text-subtle); }
+.cp-summary .cp-progress-pct { font-size: 12px; }
 .cp-progress-track {
   flex: 1 1 auto;
   height: 8px;
@@ -194,7 +201,7 @@ button, input, textarea { font: inherit; color: inherit; }
   align-items: center;
   gap: 4px;
   height: 24px;
-  padding: 0 8px;
+  padding: 0 6px 0 7px;
   border: 0;
   border-radius: 12px;
   background: var(--cp-neutral-chip);
@@ -220,11 +227,14 @@ button, input, textarea { font: inherit; color: inherit; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 500;
   color: #ffffff;
   cursor: pointer;
+  overflow: hidden;
 }
+.cp-avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cp-more .cp-icon { width: 20px; height: 20px; }
 .cp-avatar.is-empty { background: transparent; color: var(--cp-text-subtle); }
 .cp-more { background: transparent; border: 1px solid var(--cp-border); color: var(--cp-text-subtle); }
 .cp-avatar.is-empty:hover, .cp-more:hover { background: var(--cp-hover); }
@@ -284,7 +294,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .cp-edit-actions { display: flex; gap: 4px; margin-top: 8px; }
 
 .cp-list > .cp-row:last-child { margin-top: 6px; }
-#cp-new-list, #cp-size { padding-left: var(--cp-gutter); }
+#cp-new-list, #cp-size { padding-left: 0; }
 .cp-size { margin-top: 8px; font-size: 11px; color: var(--cp-text-subtlest); }
 .cp-size.is-warn { color: var(--cp-red-text); }
 
