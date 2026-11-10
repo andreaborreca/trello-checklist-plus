@@ -1,0 +1,275 @@
+/* Checklist+ styles, modeled on Trello's native checklist (Atlassian design
+   tokens, light and dark). The theme follows Trello via data-theme.
+   Backgrounds are transparent so Trello's own card background shows through. */
+
+:root {
+  color-scheme: light;
+  --cp-text: #172b4d;
+  --cp-text-subtle: #44546f;
+  --cp-text-subtlest: #626f86;
+  --cp-neutral: rgba(9, 30, 66, 0.06);
+  --cp-neutral-hover: rgba(9, 30, 66, 0.14);
+  --cp-border-input: #8590a2;
+  --cp-focus: #388bff;
+  --cp-primary: #0c66e4;
+  --cp-primary-text: #ffffff;
+  --cp-progress: #0c66e4;
+  --cp-progress-done: #1f845a;
+  --cp-success-text: #216e4e;
+  --cp-danger-text: #ae2e24;
+  --cp-warning-text: #7f5f01;
+  --cp-error-bg: #ffeceb;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --cp-text: #b6c2cf;
+  --cp-text-subtle: #9fadbc;
+  --cp-text-subtlest: #8c9bab;
+  --cp-neutral: rgba(161, 189, 217, 0.08);
+  --cp-neutral-hover: rgba(166, 197, 226, 0.16);
+  --cp-border-input: #738496;
+  --cp-focus: #85b8ff;
+  --cp-primary: #579dff;
+  --cp-primary-text: #1d2125;
+  --cp-progress: #579dff;
+  --cp-progress-done: #4bce97;
+  --cp-success-text: #7ee2b8;
+  --cp-danger-text: #fd9891;
+  --cp-warning-text: #f5cd47;
+  --cp-error-bg: #42221f;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--cp-text);
+  font: 14px/20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", Ubuntu, "Droid Sans", "Helvetica Neue", sans-serif;
+}
+
+button, input, textarea { font: inherit; color: inherit; }
+
+:focus-visible { outline: 2px solid var(--cp-focus); outline-offset: 1px; }
+
+.cp-icon { width: 16px; height: 16px; flex: none; }
+
+/* Small side padding so focus rings and the last text column are not clipped. */
+#cp-root { padding: 2px 4px 8px 2px; }
+
+/* ---------- Buttons (Trello style) ---------- */
+
+.cp-btn {
+  border: 0;
+  border-radius: 3px;
+  background: var(--cp-neutral);
+  color: var(--cp-text);
+  font-weight: 500;
+  padding: 6px 12px;
+  line-height: 20px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cp-btn:hover { background: var(--cp-neutral-hover); }
+.cp-btn-primary { background: var(--cp-primary); color: var(--cp-primary-text); }
+.cp-btn-primary:hover { background: var(--cp-primary); filter: brightness(1.08); }
+.cp-btn-subtle { background: transparent; }
+.cp-btn-block { display: block; width: 100%; margin-top: 8px; }
+
+.cp-error {
+  background: var(--cp-error-bg);
+  color: var(--cp-danger-text);
+  border-radius: 3px;
+  padding: 6px 10px;
+  margin: 0 0 12px;
+}
+
+/* ---------- Checklist ---------- */
+
+.cp-list { margin-bottom: 32px; }
+
+.cp-list-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+}
+.cp-list-title {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 600;
+  cursor: pointer;
+  word-break: break-word;
+}
+.cp-list-actions { display: flex; gap: 8px; flex: none; }
+
+.cp-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 12px;
+}
+.cp-progress-pct { width: 30px; font-size: 11px; color: var(--cp-text-subtle); }
+.cp-progress-track {
+  flex: 1 1 auto;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--cp-neutral);
+  overflow: hidden;
+}
+.cp-progress-fill { height: 100%; background: var(--cp-progress); border-radius: 4px; transition: width 0.2s; }
+.cp-progress-fill.is-complete { background: var(--cp-progress-done); }
+
+.cp-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  font-size: 12px;
+  color: var(--cp-text-subtle);
+}
+.cp-client {
+  border: 0;
+  background: transparent;
+  color: var(--cp-text-subtle);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0;
+  cursor: pointer;
+}
+.cp-client:hover { text-decoration: underline; }
+.cp-client.is-derived { font-weight: 400; }
+
+/* ---------- Item: two lines (text, then dates/worked days) ---------- */
+
+.cp-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+}
+.cp-item + .cp-item { border-top: 1px solid var(--cp-neutral); }
+
+.cp-check {
+  width: 16px;
+  height: 16px;
+  margin: 2px 0 0;
+  flex: none;
+  accent-color: var(--cp-primary);
+  cursor: pointer;
+}
+
+.cp-item-content { flex: 1 1 auto; min-width: 0; }
+.cp-item-text { cursor: pointer; word-break: break-word; }
+.cp-item.is-done .cp-item-text { text-decoration: line-through; color: var(--cp-text-subtle); }
+
+.cp-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 18px;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.cp-meta { display: inline-flex; align-items: center; gap: 4px; color: var(--cp-text-subtle); white-space: nowrap; }
+.cp-meta-label { color: var(--cp-text-subtlest); }
+.cp-meta-value { color: var(--cp-text); font-weight: 500; }
+.cp-meta-value.is-empty { color: var(--cp-text-subtlest); font-weight: 400; }
+
+.cp-meta-link { border: 0; background: transparent; padding: 0; cursor: pointer; font-size: inherit; line-height: inherit; }
+.cp-meta-link:hover .cp-meta-value { text-decoration: underline; }
+
+/* Deadline status, as text color only (no colored backgrounds). */
+.cp-meta-link.is-done .cp-meta-value { color: var(--cp-success-text); }
+.cp-meta-link.is-late .cp-meta-value { color: var(--cp-danger-text); }
+.cp-meta-link.is-soon .cp-meta-value { color: var(--cp-warning-text); }
+
+.cp-deviation { font-weight: 600; }
+.cp-deviation.is-done { color: var(--cp-success-text); }
+.cp-deviation.is-late { color: var(--cp-danger-text); }
+.cp-warn { color: var(--cp-warning-text); font-weight: 600; cursor: help; }
+
+.cp-step {
+  border: 0;
+  background: transparent;
+  color: var(--cp-text-subtle);
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 3px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cp-step:hover { background: var(--cp-neutral-hover); color: var(--cp-text); }
+
+.cp-item-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+
+.cp-avatar, .cp-more {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ffffff;
+  cursor: pointer;
+}
+.cp-avatar.is-empty, .cp-more { background: transparent; color: var(--cp-text-subtle); }
+.cp-avatar.is-empty:hover, .cp-more:hover { background: var(--cp-neutral-hover); }
+
+/* Secondary controls appear on hover/focus without shifting the layout. */
+.cp-item:not(:hover):not(:focus-within) .cp-step,
+.cp-item:not(:hover):not(:focus-within) .cp-more,
+.cp-item:not(:hover):not(:focus-within) .cp-avatar.is-empty { visibility: hidden; }
+
+/* ---------- Inline editors (item text, title, new item) ---------- */
+
+.cp-edit { flex: 1 1 auto; }
+.cp-edit-text {
+  width: 100%;
+  min-height: 56px;
+  resize: vertical;
+  padding: 8px 12px;
+  border: 1px solid var(--cp-border-input);
+  border-radius: 3px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--cp-focus);
+}
+.cp-edit-actions { display: flex; gap: 4px; margin-top: 8px; }
+
+.cp-add-btn, .cp-add-form { margin-top: 8px; }
+.cp-new-list-btn { margin-top: 4px; }
+
+.cp-size { margin-top: 8px; font-size: 11px; color: var(--cp-text-subtlest); }
+.cp-size.is-warn { color: var(--cp-danger-text); }
+
+/* ---------- Dates popover ---------- */
+
+.cp-popup { padding: 0 12px 12px; }
+.cp-popup-field { display: block; margin-bottom: 12px; }
+.cp-popup-field span {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--cp-text-subtle);
+  margin-bottom: 4px;
+}
+.cp-popup-field input {
+  width: 100%;
+  height: 36px;
+  padding: 6px 8px;
+  border: 1px solid var(--cp-border-input);
+  border-radius: 3px;
+  background: transparent;
+}
+.cp-popup-info { font-size: 12px; color: var(--cp-text-subtle); margin: 4px 0 8px; }
