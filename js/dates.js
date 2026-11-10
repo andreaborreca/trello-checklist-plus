@@ -73,13 +73,21 @@
     document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
   }
 
-  // Theme passed by the card section (the popover context may not carry it),
-  // falling back to Trello's context.
-  try {
-    var ctx = t.getContext() || {};
-    var passed = t.arg('th');
-    applyTheme(passed === 'dark' || passed === 'light' ? passed : (ctx.theme || ctx.initialTheme));
-  } catch (e) { applyTheme('light'); }
+  /** Theme from the URL (set by the section), then popover args, Trello context, OS setting. */
+  function detectTheme() {
+    var fromUrl = '';
+    try { fromUrl = new URLSearchParams(window.location.search).get('th') || ''; } catch (e) { /* ignore */ }
+    if (fromUrl === 'dark' || fromUrl === 'light') return fromUrl;
+    try {
+      var passed = t.arg('th');
+      if (passed === 'dark' || passed === 'light') return passed;
+      var ctx = t.getContext() || {};
+      if (ctx.theme || ctx.initialTheme) return ctx.theme || ctx.initialTheme;
+    } catch (e) { /* ignore */ }
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  applyTheme(detectTheme());
 
   if (!ID_RE.test(listId || '') || !ID_RE.test(itemId || '')) {
     showError('Elemento non valido.');
