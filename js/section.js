@@ -66,6 +66,8 @@
 
   // Fixed icon paths (24x24 viewBox). Never built from user data.
   var ICONS = {
+    clock: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zm-1 3v6l5 3 1-1.7-4-2.3V7h-2z',
+    checklist: 'M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 2v14h14V5H5zm5.3 10.7L7 12.4l1.4-1.4 1.9 1.9 5.3-5.3L17 9l-6.7 6.7z',
     person: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-4 0-8 2-8 5v1h16v-1c0-3-4-5-8-5z',
     dots: 'M6 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm6 0a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z'
   };
@@ -365,7 +367,7 @@
     return box;
   }
 
-  /** Worked days in the meta line: "5 gg" with -/+ shown on hover. */
+  /** Worked days in the meta line: "Lavorati 1 gg" with -/+ shown on hover. */
   function effortField(list, item) {
     var key = list.i + ':' + item.i;
     function current() { return Math.max(0, (item.w || 0) + (pendingEffort[key] || 0)); }
@@ -390,18 +392,12 @@
     ]);
   }
 
-  /**
-   * The three dates, always visible as plain text links (no colored
-   * backgrounds). Each opens the dates popover. The deadline text takes
-   * Trello's status color; the deviation is shown next to the end date.
-   */
-  function dateFields(list, item, metrics) {
-    var status = calc.dueStatus(item, wd.todayIso(), holidays);
+  /** Start / end dates and deviation in the meta line (plain text, clickable). */
+  function metaDates(list, item, metrics) {
     function open(ev) { openDates(t, ev, list, item); }
-
-    function field(label, iso, extraCls) {
+    function field(label, iso) {
       return el('button', {
-        cls: 'cp-meta cp-meta-link' + (extraCls || ''),
+        cls: 'cp-meta cp-meta-link',
         attrs: { type: 'button', title: 'Modifica le date' },
         on: { click: open }
       }, [
@@ -409,12 +405,7 @@
         el('span', { cls: 'cp-meta-value' + (iso ? '' : ' is-empty'), text: iso ? calc.fmtChipDate(iso) : '—' })
       ]);
     }
-
-    var nodes = [
-      field('Inizio', item.s),
-      field('Deadline', item.dl, status ? ' is-' + status : ''),
-      field('Fine', item.e)
-    ];
+    var nodes = [field('Inizio', item.s), field('Fine', item.e)];
     if (metrics.deviation !== null) {
       nodes.push(el('span', {
         cls: 'cp-meta cp-deviation ' + (metrics.deviation > 0 ? 'is-late' : 'is-done'),
@@ -422,6 +413,22 @@
       }));
     }
     return nodes;
+  }
+
+  /**
+   * Deadline chip on the right of the row, identical in role and colors to
+   * Trello's native checklist due chip (green done, red late, yellow soon).
+   * Without a deadline it shows only a clock icon on hover.
+   */
+  function deadlineChip(list, item) {
+    var status = calc.dueStatus(item, wd.todayIso(), holidays);
+    var btn = el('button', {
+      cls: 'cp-due' + (status ? ' is-' + status : '') + (item.dl ? '' : ' is-empty'),
+      attrs: { type: 'button', title: item.dl ? 'Deadline ' + calc.fmtShortDate(item.dl) : 'Imposta le date', 'aria-label': item.dl ? 'Deadline ' + calc.fmtChipDate(item.dl) : 'Imposta le date' },
+      on: { click: function (ev) { openDates(t, ev, list, item); } }
+    }, [icon('clock')]);
+    if (item.dl) btn.appendChild(el('span', { text: calc.fmtChipDate(item.dl) }));
+    return btn;
   }
 
   function avatarButton(list, item) {
@@ -440,6 +447,11 @@
     return btn;
   }
 
+  /**
+   * Item row, laid out like Trello's native checklist:
+   * [gutter: checkbox] [text ............ deadline chip, avatar, ...]
+   *                    [Inizio · Fine · deviation · Lavorati]
+   */
   function renderItem(list, item) {
     var metrics = calc.itemMetrics(item, holidays);
     var isEditing = editing && editing.type === 'item' && editing.i === item.i;
@@ -461,53 +473,66 @@
     });
     checkbox.checked = !!item.d;
 
-    var body;
+    var main;
     if (isEditing) {
-      body = inlineEditor(item.t, 500, function (v) {
+      main = inlineEditor(item.t, 500, function (v) {
         editing = null;
         saveItem(list.i, item.i, function (it) { it.t = v; }).catch(function () {});
       }, function () { editing = null; render(); });
     } else {
-      body = el('div', {
-        cls: 'cp-item-text',
-        text: item.t,
-        attrs: { role: 'button', tabindex: '0', title: 'Clicca per modificare' },
-        on: {
-          click: function () { editing = { type: 'item', i: item.i }; render(); },
-          keydown: function (ev) { if (ev.key === 'Enter') { editing = { type: 'item', i: item.i }; render(); } }
-        }
-      });
+      main = el('div', { cls: 'cp-item-main' }, [
+        el('div', {
+          cls: 'cp-item-text',
+          text: item.t,
+          attrs: { role: 'button', tabindex: '0', title: 'Clicca per modificare' },
+          on: {
+            click: function () { editing = { type: 'item', i: item.i }; render(); },
+            keydown: function (ev) { if (ev.key === 'Enter') { editing = { type: 'item', i: item.i }; render(); } }
+          }
+        }),
+        el('div', { cls: 'cp-item-actions' }, [
+          deadlineChip(list, item),
+          avatarButton(list, item),
+          el('button', {
+            cls: 'cp-more',
+            attrs: { type: 'button', title: 'Azioni', 'aria-label': 'Azioni elemento' },
+            on: { click: function (ev) { openItemMenu(ev, list, item); } }
+          }, [icon('dots')])
+        ])
+      ]);
     }
 
-    // Second line under the text: all dates, worked days, warnings.
-    var meta = isEditing ? null : el('div', { cls: 'cp-item-meta' }, dateFields(list, item, metrics).concat([
+    var meta = isEditing ? null : el('div', { cls: 'cp-item-meta' }, metaDates(list, item, metrics).concat([
       effortField(list, item),
       metrics.warnings.length
         ? el('span', { cls: 'cp-meta cp-warn', text: '! da verificare', attrs: { title: metrics.warnings.join('\n') } })
         : null
     ]));
 
-    var content = el('div', { cls: 'cp-item-content' }, [body, meta]);
-
-    var actions = isEditing ? null : el('div', { cls: 'cp-item-actions' }, [
-      avatarButton(list, item),
-      el('button', {
-        cls: 'cp-more',
-        attrs: { type: 'button', title: 'Azioni', 'aria-label': 'Azioni elemento' },
-        on: { click: function (ev) { openItemMenu(ev, list, item); } }
-      }, [icon('dots')])
+    var row = el('div', { cls: 'cp-item' + (item.d ? ' is-done' : '') + (isEditing ? ' is-editing' : '') }, [
+      el('div', { cls: 'cp-gutter' }, [checkbox]),
+      el('div', { cls: 'cp-item-content' }, [main, meta])
     ]);
-
-    var row = el('div', { cls: 'cp-item' + (item.d ? ' is-done' : '') + (isEditing ? ' is-editing' : '') }, [checkbox, content, actions]);
     return row;
   }
 
+  /**
+   * Checklist block, laid out like Trello's native one:
+   * [gutter: icon] [title ...... client · total · Nascondi · Elimina]
+   * [gutter: 50%]  [progress bar]
+   */
   function renderList(list) {
     var tot = calc.checklistTotals(list, holidays);
     var hiding = isHidingDone(list.i);
     var isEditingTitle = editing && editing.type === 'title' && editing.l === list.i;
     var pct = tot.total ? Math.round((tot.done / tot.total) * 100) : 0;
     var client = calc.resolveClient(list);
+
+    // The farthest item deadline is used for the overall deviation but not shown.
+    var summaryTip = [];
+    if (tot.start) summaryTip.push('Inizio ' + calc.fmtShortDate(tot.start));
+    if (tot.end) summaryTip.push('Fine ' + calc.fmtShortDate(tot.end));
+    if (tot.deadline) summaryTip.push('Deadline più lontana ' + calc.fmtShortDate(tot.deadline));
 
     var titleNode = isEditingTitle
       ? inlineEditor(list.n, 200, function (v) {
@@ -524,41 +549,35 @@
         }
       });
 
-    var header = el('div', { cls: 'cp-list-header' }, [
-      titleNode,
-      isEditingTitle ? null : el('div', { cls: 'cp-list-actions' }, [
-        tot.done > 0 ? el('button', {
-          cls: 'cp-btn',
-          text: hiding ? 'Mostra elementi spuntati (' + tot.done + ')' : 'Nascondi elementi spuntati',
-          attrs: { type: 'button' },
-          on: { click: function () { toggleHidingDone(list.i); } }
-        }) : null,
-        el('button', {
-          cls: 'cp-btn',
-          text: 'Elimina',
-          attrs: { type: 'button' },
-          on: {
-            click: function (ev) {
-              confirmDelete(t, ev, 'Eliminare ' + list.n.slice(0, 40) + '?', 'La checklist e i suoi elementi verranno eliminati definitivamente.',
-                function (s) { s.l = s.l.filter(function (l) { return l.i !== list.i; }); });
-            }
+    var headerRight = isEditingTitle ? null : el('div', { cls: 'cp-list-actions' }, [
+      tot.done > 0 ? el('button', {
+        cls: 'cp-btn',
+        text: hiding ? 'Mostra gli elementi selezionati (' + tot.done + ')' : 'Nascondi gli elementi selezionati',
+        attrs: { type: 'button' },
+        on: { click: function () { toggleHidingDone(list.i); } }
+      }) : null,
+      el('button', {
+        cls: 'cp-btn',
+        text: 'Elimina',
+        attrs: { type: 'button' },
+        on: {
+          click: function (ev) {
+            confirmDelete(t, ev, 'Eliminare ' + list.n.slice(0, 40) + '?', 'La checklist e i suoi elementi verranno eliminati definitivamente.',
+              function (s) { s.l = s.l.filter(function (l) { return l.i !== list.i; }); });
           }
-        })
-      ])
+        }
+      })
     ]);
 
-    // Progress row: percentage + bar (as in Trello) + compact summary.
-    // The farthest item deadline is used for the overall deviation but not shown.
-    var summaryTip = [];
-    if (tot.start) summaryTip.push('Inizio ' + calc.fmtShortDate(tot.start));
-    if (tot.end) summaryTip.push('Fine ' + calc.fmtShortDate(tot.end));
-    if (tot.deadline) summaryTip.push('Deadline più lontana ' + calc.fmtShortDate(tot.deadline));
+    var header = el('div', { cls: 'cp-row cp-list-header' }, [
+      el('div', { cls: 'cp-gutter' }, [icon('checklist')]),
+      el('div', { cls: 'cp-list-head' }, [titleNode, headerRight])
+    ]);
 
     var fill = el('div', { cls: 'cp-progress-fill' + (pct === 100 ? ' is-complete' : '') });
     fill.style.width = pct + '%';
-
-    var progress = el('div', { cls: 'cp-progress' }, [
-      el('span', { cls: 'cp-progress-pct', text: pct + '%' }),
+    var progress = el('div', { cls: 'cp-row cp-progress' }, [
+      el('div', { cls: 'cp-gutter cp-progress-pct', text: pct + '%' }),
       el('div', { cls: 'cp-progress-track', attrs: { role: 'progressbar', 'aria-valuenow': String(pct), 'aria-valuemin': '0', 'aria-valuemax': '100' } }, [fill]),
       el('div', { cls: 'cp-summary', attrs: { title: summaryTip.join(' · ') } }, [
         el('button', {
@@ -567,7 +586,7 @@
           attrs: { type: 'button', title: 'Cliente per l\'export' + (client.derived ? ' (dedotto dal titolo)' : '') },
           on: { click: function (ev) { openClient(ev, list); } }
         }),
-        tot.effort ? el('span', { cls: 'cp-summary-effort', text: calc.fmtNumber(tot.effort) + ' gg' }) : null,
+        tot.effort ? el('span', { text: calc.fmtNumber(tot.effort) + ' gg' }) : null,
         tot.deviation !== null
           ? el('span', { cls: 'cp-deviation ' + (tot.deviation > 0 ? 'is-late' : 'is-done'), text: calc.fmtDeviation(tot.deviation) })
           : null,
@@ -576,13 +595,11 @@
     ]);
 
     var section = el('section', { cls: 'cp-list' }, [header, progress]);
-
     list.x.forEach(function (item) {
       if (hiding && item.d) return;
       section.appendChild(renderItem(list, item));
     });
-
-    section.appendChild(renderAddItem(list));
+    section.appendChild(el('div', { cls: 'cp-row' }, [el('div', { cls: 'cp-gutter' }), el('div', { cls: 'cp-item-content' }, [renderAddItem(list)])]));
     return section;
   }
 
