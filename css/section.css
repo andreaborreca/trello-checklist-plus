@@ -1,42 +1,48 @@
-/* Checklist+ styles, modeled on Trello's native checklist (Atlassian design
-   tokens, light and dark). The theme follows Trello via data-theme.
-   Backgrounds are transparent so Trello's own card background shows through. */
+/* Checklist+ styles, matched to Trello's native checklist.
+   Dark values are sampled from Trello's current dark theme; light values
+   follow the same structure. Backgrounds are transparent so Trello's own
+   card background shows through. The theme follows Trello via data-theme. */
 
 :root {
   color-scheme: light;
-  --cp-text: #172b4d;
-  --cp-text-subtle: #44546f;
-  --cp-text-subtlest: #626f86;
-  --cp-neutral: rgba(9, 30, 66, 0.06);
-  --cp-neutral-hover: rgba(9, 30, 66, 0.14);
-  --cp-border-input: #8590a2;
-  --cp-focus: #388bff;
-  --cp-primary: #0c66e4;
-  --cp-primary-text: #ffffff;
-  --cp-progress: #0c66e4;
-  --cp-progress-done: #1f845a;
-  --cp-success-text: #216e4e;
-  --cp-danger-text: #ae2e24;
-  --cp-warning-text: #7f5f01;
+  --cp-gutter: 28px;               /* checkbox / icon / percentage column */
+  --cp-text: #292a2e;
+  --cp-text-subtle: #505258;
+  --cp-text-subtlest: #6b6e76;
+  --cp-border: #dddee1;
+  --cp-hover: rgba(5, 21, 36, 0.06);
+  --cp-checkbox-border: #7e8188;
+  --cp-primary: #1868db;
+  --cp-on-primary: #ffffff;
+  --cp-track: #e5e6e8;
+  --cp-fill: #505258;
+  --cp-green: #94c748;
+  --cp-red: #f87168;
+  --cp-yellow: #f5cd47;
+  --cp-on-status: #1f1f21;
+  --cp-neutral-chip: #e5e6e8;
+  --cp-green-text: #4c6b1f;
+  --cp-red-text: #ae2e24;
+  --cp-yellow-text: #7f5f01;
   --cp-error-bg: #ffeceb;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --cp-text: #b6c2cf;
-  --cp-text-subtle: #9fadbc;
-  --cp-text-subtlest: #8c9bab;
-  --cp-neutral: rgba(161, 189, 217, 0.08);
-  --cp-neutral-hover: rgba(166, 197, 226, 0.16);
-  --cp-border-input: #738496;
-  --cp-focus: #85b8ff;
-  --cp-primary: #579dff;
-  --cp-primary-text: #1d2125;
-  --cp-progress: #579dff;
-  --cp-progress-done: #4bce97;
-  --cp-success-text: #7ee2b8;
-  --cp-danger-text: #fd9891;
-  --cp-warning-text: #f5cd47;
+  --cp-text: #cecfd2;
+  --cp-text-subtle: #a9abaf;
+  --cp-text-subtlest: #8c8f97;
+  --cp-border: #3c3d40;
+  --cp-hover: rgba(206, 207, 210, 0.08);
+  --cp-checkbox-border: #7e8188;
+  --cp-primary: #669df1;
+  --cp-on-primary: #1f1f21;
+  --cp-track: #303134;
+  --cp-fill: #cecfd2;
+  --cp-neutral-chip: #3c3d40;
+  --cp-green-text: #94c748;
+  --cp-red-text: #f87168;
+  --cp-yellow-text: #f5cd47;
   --cp-error-bg: #42221f;
 }
 
@@ -51,53 +57,59 @@ html, body {
 }
 
 button, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--cp-primary); outline-offset: 1px; }
 
-:focus-visible { outline: 2px solid var(--cp-focus); outline-offset: 1px; }
+#cp-root { padding: 2px 2px 8px 0; }
 
 .cp-icon { width: 16px; height: 16px; flex: none; }
 
-/* Small side padding so focus rings and the last text column are not clipped. */
-#cp-root { padding: 2px 4px 8px 2px; }
-
-/* ---------- Buttons (Trello style) ---------- */
+/* ---------- Buttons: outlined, as in Trello's checklist header ---------- */
 
 .cp-btn {
-  border: 0;
-  border-radius: 3px;
-  background: var(--cp-neutral);
+  border: 1px solid var(--cp-border);
+  border-radius: 4px;
+  background: transparent;
   color: var(--cp-text);
   font-weight: 500;
-  padding: 6px 12px;
+  padding: 5px 12px;
   line-height: 20px;
   cursor: pointer;
   white-space: nowrap;
 }
-.cp-btn:hover { background: var(--cp-neutral-hover); }
-.cp-btn-primary { background: var(--cp-primary); color: var(--cp-primary-text); }
+.cp-btn:hover { background: var(--cp-hover); }
+.cp-btn-primary { background: var(--cp-primary); border-color: var(--cp-primary); color: var(--cp-on-primary); }
 .cp-btn-primary:hover { background: var(--cp-primary); filter: brightness(1.08); }
-.cp-btn-subtle { background: transparent; }
+.cp-btn-subtle { border-color: transparent; }
 .cp-btn-block { display: block; width: 100%; margin-top: 8px; }
 
 .cp-error {
   background: var(--cp-error-bg);
-  color: var(--cp-danger-text);
-  border-radius: 3px;
+  color: var(--cp-red-text);
+  border-radius: 4px;
   padding: 6px 10px;
   margin: 0 0 12px;
 }
 
-/* ---------- Checklist ---------- */
+/* ---------- Gutter layout (no extra indentation inside the content) ---------- */
 
-.cp-list { margin-bottom: 32px; }
-
-.cp-list-header {
+.cp-row, .cp-item { display: flex; align-items: flex-start; }
+.cp-gutter {
+  flex: 0 0 var(--cp-gutter);
+  width: var(--cp-gutter);
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: 32px;
+  color: var(--cp-text-subtle);
 }
+
+/* ---------- Checklist header and progress ---------- */
+
+.cp-list { margin-bottom: 24px; }
+
+.cp-list-header { align-items: center; min-height: 32px; }
+.cp-list-head { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .cp-list-title {
-  flex: 1 1 auto;
+  flex: 1 1 120px;
+  min-width: 120px;
   margin: 0;
   font-size: 16px;
   line-height: 20px;
@@ -105,32 +117,16 @@ button, input, textarea { font: inherit; color: inherit; }
   cursor: pointer;
   word-break: break-word;
 }
-.cp-list-actions { display: flex; gap: 8px; flex: none; }
-
-.cp-progress {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 10px 0 12px;
-}
-.cp-progress-pct { width: 30px; font-size: 11px; color: var(--cp-text-subtle); }
-.cp-progress-track {
-  flex: 1 1 auto;
-  height: 8px;
-  border-radius: 4px;
-  background: var(--cp-neutral);
-  overflow: hidden;
-}
-.cp-progress-fill { height: 100%; background: var(--cp-progress); border-radius: 4px; transition: width 0.2s; }
-.cp-progress-fill.is-complete { background: var(--cp-progress-done); }
+.cp-list-actions { display: flex; align-items: center; gap: 8px; flex: none; }
 
 .cp-summary {
   display: flex;
   align-items: center;
-  gap: 10px;
-  flex: none;
+  gap: 8px;
   font-size: 12px;
   color: var(--cp-text-subtle);
+  margin-left: 12px;
+  flex: none;
 }
 .cp-client {
   border: 0;
@@ -144,71 +140,76 @@ button, input, textarea { font: inherit; color: inherit; }
 .cp-client:hover { text-decoration: underline; }
 .cp-client.is-derived { font-weight: 400; }
 
-/* ---------- Item: two lines (text, then dates/worked days) ---------- */
-
-.cp-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 10px 0;
+.cp-progress { align-items: center; margin: 10px 0 8px; }
+.cp-progress-pct { font-size: 11px; color: var(--cp-text-subtle); }
+.cp-progress-track {
+  flex: 1 1 auto;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--cp-track);
+  overflow: hidden;
 }
-.cp-item + .cp-item { border-top: 1px solid var(--cp-neutral); }
+.cp-progress-fill { height: 100%; background: var(--cp-fill); border-radius: 4px; transition: width 0.2s; }
+.cp-progress-fill.is-complete { background: var(--cp-green); }
 
+/* ---------- Items ---------- */
+
+.cp-item { padding: 6px 0; }
+
+/* Native-looking checkbox */
 .cp-check {
+  appearance: none;
+  -webkit-appearance: none;
   width: 16px;
   height: 16px;
   margin: 2px 0 0;
-  flex: none;
-  accent-color: var(--cp-primary);
+  border: 1px solid var(--cp-checkbox-border);
+  border-radius: 2px;
+  background: transparent;
   cursor: pointer;
+  position: relative;
 }
+.cp-check:checked { background: var(--cp-primary); border-color: var(--cp-primary); }
+.cp-check:checked::after {
+  /* Thin checkmark drawn to match Trello's native one (about 9x6 px, ~1.5 px stroke). */
+  content: "";
+  position: absolute;
+  inset: -1px;
+  background: var(--cp-on-primary);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpolyline points='4.1,8.6 6.8,11.2 12,5.8' fill='none' stroke='black' stroke-width='1.6'/%3E%3C/svg%3E") center / 16px 16px no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpolyline points='4.1,8.6 6.8,11.2 12,5.8' fill='none' stroke='black' stroke-width='1.6'/%3E%3C/svg%3E") center / 16px 16px no-repeat;
+}
+.cp-item .cp-gutter { align-items: flex-start; padding-top: 2px; }
 
 .cp-item-content { flex: 1 1 auto; min-width: 0; }
-.cp-item-text { cursor: pointer; word-break: break-word; }
+.cp-item-main { display: flex; align-items: flex-start; gap: 8px; }
+.cp-item-text { flex: 1 1 auto; min-width: 0; padding-top: 2px; cursor: pointer; word-break: break-word; }
 .cp-item.is-done .cp-item-text { text-decoration: line-through; color: var(--cp-text-subtle); }
 
-.cp-item-meta {
-  display: flex;
-  flex-wrap: wrap;
+.cp-item-actions { display: flex; align-items: center; gap: 4px; flex: none; }
+
+/* Deadline chip, same colors as Trello's due chip */
+.cp-due {
+  display: inline-flex;
   align-items: center;
-  gap: 4px 18px;
-  margin-top: 6px;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--cp-neutral-chip);
+  color: var(--cp-text);
   font-size: 12px;
   line-height: 16px;
-}
-
-.cp-meta { display: inline-flex; align-items: center; gap: 4px; color: var(--cp-text-subtle); white-space: nowrap; }
-.cp-meta-label { color: var(--cp-text-subtlest); }
-.cp-meta-value { color: var(--cp-text); font-weight: 500; }
-.cp-meta-value.is-empty { color: var(--cp-text-subtlest); font-weight: 400; }
-
-.cp-meta-link { border: 0; background: transparent; padding: 0; cursor: pointer; font-size: inherit; line-height: inherit; }
-.cp-meta-link:hover .cp-meta-value { text-decoration: underline; }
-
-/* Deadline status, as text color only (no colored backgrounds). */
-.cp-meta-link.is-done .cp-meta-value { color: var(--cp-success-text); }
-.cp-meta-link.is-late .cp-meta-value { color: var(--cp-danger-text); }
-.cp-meta-link.is-soon .cp-meta-value { color: var(--cp-warning-text); }
-
-.cp-deviation { font-weight: 600; }
-.cp-deviation.is-done { color: var(--cp-success-text); }
-.cp-deviation.is-late { color: var(--cp-danger-text); }
-.cp-warn { color: var(--cp-warning-text); font-weight: 600; cursor: help; }
-
-.cp-step {
-  border: 0;
-  background: transparent;
-  color: var(--cp-text-subtle);
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border-radius: 3px;
-  font-weight: 700;
+  white-space: nowrap;
   cursor: pointer;
 }
-.cp-step:hover { background: var(--cp-neutral-hover); color: var(--cp-text); }
-
-.cp-item-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+.cp-due .cp-icon { width: 14px; height: 14px; }
+.cp-due.is-done { background: var(--cp-green); color: var(--cp-on-status); }
+.cp-due.is-late { background: var(--cp-red); color: var(--cp-on-status); }
+.cp-due.is-soon { background: var(--cp-yellow); color: var(--cp-on-status); }
+.cp-due.is-empty { background: transparent; color: var(--cp-text-subtle); padding: 0 4px; }
+.cp-due:hover { filter: brightness(1.08); }
 
 .cp-avatar, .cp-more {
   width: 24px;
@@ -224,15 +225,51 @@ button, input, textarea { font: inherit; color: inherit; }
   color: #ffffff;
   cursor: pointer;
 }
-.cp-avatar.is-empty, .cp-more { background: transparent; color: var(--cp-text-subtle); }
-.cp-avatar.is-empty:hover, .cp-more:hover { background: var(--cp-neutral-hover); }
+.cp-avatar.is-empty { background: transparent; color: var(--cp-text-subtle); }
+.cp-more { background: transparent; border: 1px solid var(--cp-border); color: var(--cp-text-subtle); }
+.cp-avatar.is-empty:hover, .cp-more:hover { background: var(--cp-hover); }
+
+/* Second line: start, end, deviation, worked days */
+.cp-item-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 14px;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 18px;
+}
+.cp-meta { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.cp-meta-label { color: var(--cp-text-subtlest); }
+.cp-meta-value { color: var(--cp-text-subtle); font-weight: 600; }
+.cp-meta-value.is-empty { font-weight: 400; color: var(--cp-text-subtlest); }
+.cp-meta-link { border: 0; background: transparent; padding: 0; cursor: pointer; font-size: inherit; line-height: inherit; }
+.cp-meta-link:hover .cp-meta-value { text-decoration: underline; }
+
+.cp-deviation { font-weight: 600; }
+.cp-deviation.is-done { color: var(--cp-green-text); }
+.cp-deviation.is-late { color: var(--cp-red-text); }
+.cp-warn { color: var(--cp-yellow-text); font-weight: 600; cursor: help; }
+
+.cp-step {
+  border: 0;
+  background: transparent;
+  color: var(--cp-text-subtle);
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border-radius: 3px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cp-step:hover { background: var(--cp-hover); color: var(--cp-text); }
 
 /* Secondary controls appear on hover/focus without shifting the layout. */
 .cp-item:not(:hover):not(:focus-within) .cp-step,
-.cp-item:not(:hover):not(:focus-within) .cp-more,
-.cp-item:not(:hover):not(:focus-within) .cp-avatar.is-empty { visibility: hidden; }
+.cp-item:not(:hover):not(:focus-within) .cp-avatar.is-empty,
+.cp-item:not(:hover):not(:focus-within) .cp-due.is-empty { visibility: hidden; }
 
-/* ---------- Inline editors (item text, title, new item) ---------- */
+/* ---------- Inline editors and add buttons ---------- */
 
 .cp-edit { flex: 1 1 auto; }
 .cp-edit-text {
@@ -240,18 +277,16 @@ button, input, textarea { font: inherit; color: inherit; }
   min-height: 56px;
   resize: vertical;
   padding: 8px 12px;
-  border: 1px solid var(--cp-border-input);
-  border-radius: 3px;
+  border: 1px solid var(--cp-primary);
+  border-radius: 4px;
   background: transparent;
-  box-shadow: inset 0 0 0 1px var(--cp-focus);
 }
 .cp-edit-actions { display: flex; gap: 4px; margin-top: 8px; }
 
-.cp-add-btn, .cp-add-form { margin-top: 8px; }
-.cp-new-list-btn { margin-top: 4px; }
-
+.cp-list > .cp-row:last-child { margin-top: 6px; }
+#cp-new-list, #cp-size { padding-left: var(--cp-gutter); }
 .cp-size { margin-top: 8px; font-size: 11px; color: var(--cp-text-subtlest); }
-.cp-size.is-warn { color: var(--cp-danger-text); }
+.cp-size.is-warn { color: var(--cp-red-text); }
 
 /* ---------- Dates popover ---------- */
 
@@ -268,8 +303,8 @@ button, input, textarea { font: inherit; color: inherit; }
   width: 100%;
   height: 36px;
   padding: 6px 8px;
-  border: 1px solid var(--cp-border-input);
-  border-radius: 3px;
+  border: 1px solid var(--cp-checkbox-border);
+  border-radius: 4px;
   background: transparent;
 }
 .cp-popup-info { font-size: 12px; color: var(--cp-text-subtle); margin: 4px 0 8px; }
