@@ -1,8 +1,8 @@
 /* Inter (SIL Open Font License, see fonts/OFL-LICENSE.txt): its metrics match
    the text measured in Trello's checklist. Self-hosted: no third-party requests. */
-@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.15.0") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.15.0") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.15.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.15.1") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.15.1") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.15.1") format("woff2"); }
 
 /* Checklist+ styles, matched to Trello's native checklist.
    Dark values are sampled from Trello's current dark theme; light values
@@ -436,7 +436,14 @@ html:has(> body.cp-popup-body), body.cp-popup-body { background: var(--cp-popup-
 
 /* Collapse chevron on the left of the checklist title */
 .cp-collapse {
-  flex: none; width: 24px; height: 24px; margin-right: 2px; padding: 0; border: 0; border-radius: 4px;
+  /* Narrow, with negative margins: the chevron sits close to the title and flush with the left edge. */
+  flex: none; width: 20px; height: 24px; margin: 0 -5px 0 -2px; padding: 0; border: 0; border-radius: 4px;
   background: transparent; color: var(--cp-text-subtle); display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
 }
 .cp-collapse:hover { background: var(--cp-hover); }
+
+/* The card section never shows its own scrollbar: Trello sizes the frame to
+   the content. Only when the content exceeds Trello's maximum height (1500px)
+   the section scrolls inside (class set by section.js). */
+html.cp-section, html.cp-section body { overflow: hidden; }
+html.cp-section.is-tall { overflow-y: auto; }

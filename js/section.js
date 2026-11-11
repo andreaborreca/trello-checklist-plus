@@ -310,9 +310,26 @@
   /* Rendering                                                          */
   /* ------------------------------------------------------------------ */
 
+  var MAX_SECTION_HEIGHT = 1500; // Trello's limit for a card back section
+  document.documentElement.classList.add('cp-section');
+
   function resize() {
+    var root = document.getElementById('cp-root');
+    // Scroll inside the section only when Trello cannot make the frame taller.
+    if (root) document.documentElement.classList.toggle('is-tall', root.offsetHeight > MAX_SECTION_HEIGHT);
     t.sizeTo('#cp-root').catch(function () { /* iframe not ready yet */ });
   }
+
+  // Follow every change of the content height (web font loaded, text wrapping,
+  // theme switch...), not only our own re-renders.
+  (function watchHeight() {
+    var root = document.getElementById('cp-root');
+    var pending = null;
+    function later() { if (pending) clearTimeout(pending); pending = setTimeout(resize, 30); }
+    if (root && typeof ResizeObserver === 'function') new ResizeObserver(later).observe(root);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(later);
+    window.addEventListener('load', later);
+  })();
 
   // Avatar helpers live in people.js (shared with the popovers).
   var initials = window.CP.people.initials;
