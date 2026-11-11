@@ -1,7 +1,7 @@
 /**
  * Checklist+ - export popover. Reads the Checklist+ data of every card on the
  * board and offers it as a CSV download (with a copy-to-clipboard fallback),
- * for all months or only the selected ones.
+ * as an Excel workbook or a CSV, for all months/clients or only the selected ones.
  * Read-only: nothing is written to Trello and nothing leaves the browser.
  */
 /* global TrelloPowerUp */
@@ -17,7 +17,7 @@
   var statusEl = document.getElementById('cp-export-status');
   var errorEl = document.getElementById('cp-popup-error');
   var downloadEl = document.getElementById('cp-export-download');
-  var copyEl = document.getElementById('cp-export-copy');
+  var excelEl = document.getElementById('cp-export-excel');
   var monthsEl = document.getElementById('cp-export-months');
   var selectEl = document.getElementById('cp-month-select');
   var clientsEl = document.getElementById('cp-export-clients');
@@ -42,7 +42,6 @@
   var names = {};       // member id -> name
   var memberAreas = {}; // member id -> area name
   var boardName = '';
-  var currentCsv = '';
   var blobUrl = '';
 
   function resize() { t.sizeTo('#cp-export').catch(function () {}); }
@@ -57,11 +56,11 @@
   }
 
   /** File name like "checklist-plus_board_2026-11.csv" (date of export when all months). */
-  function fileName(sel) {
+  function fileName(sel, ext) {
     var slug = String(boardName || 'board').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'board';
     var suffix = sel && sel.size ? Array.from(sel).sort().join('_') : window.CP.workdays.todayIso();
     if (clientSelectEl.value) suffix = clientSelectEl.value.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '_' + suffix;
-    return 'checklist-plus_' + slug + '_' + suffix + '.csv';
+    return 'checklist-plus_' + slug + '_' + suffix + '.' + ext;
   }
 
   /** Rebuilds the CSV for the current month selection and refreshes the buttons. */
@@ -73,15 +72,38 @@
       ? out.stats.cards + ' card, ' + out.stats.lists + ' checklist, ' + out.stats.tasks + ' task, ' + calc.fmtNumber(out.stats.effort) + ' giorni lavorati.'
       : (sel || clientSelectEl.value ? 'Nessun task con i filtri selezionati.' : 'Nessuna Checklist+ con elementi su questa bacheca.');
 
-    currentCsv = out.csv;
+    // CSV link (secondary format).
     if (blobUrl) URL.revokeObjectURL(blobUrl);
     blobUrl = URL.createObjectURL(new Blob([out.csv], { type: 'text/csv;charset=utf-8' }));
     downloadEl.href = blobUrl;
-    downloadEl.download = fileName(sel);
+    downloadEl.download = fileName(sel, 'csv');
     downloadEl.hidden = !has;
-    copyEl.hidden = !has;
-    copyEl.textContent = 'Copia negli appunti';
+    excelEl.hidden = !has;
     resize();
+  }
+
+  /** Builds the Excel workbook for the current filters and downloads it. */
+  function downloadExcel() {
+    var sel = selection();
+    var tree = exportcsv.collect(data, names, new Set(), sel, memberAreas, clientSelectEl.value);
+    var today = window.CP.workdays.todayIso();
+    excelEl.disabled = true;
+    window.CP.exportxlsx.toBuffer(tree, {
+      board: boardName,
+      exportedOn: today.slice(8, 10) + '/' + today.slice(5, 7) + '/' + today.slice(0, 4),
+      monthLabel: selectEl.value ? monthLabel(selectEl.value) : 'tutti',
+      clientLabel: clientSelectEl.value || 'tutti'
+    }).then(function (buffer) {
+      var url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = fileName(sel, 'xlsx');
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
+    }).catch(function (err) { fail('Creazione del file Excel non riuscita', err); resize(); })
+      .then(function () { excelEl.disabled = false; });
   }
 
   /** Fills the month select: most recent month first, "Senza data" last. */
@@ -115,11 +137,7 @@
   selectEl.addEventListener('change', refresh);
   clientSelectEl.addEventListener('change', refresh);
 
-  copyEl.addEventListener('click', function () {
-    navigator.clipboard.writeText(currentCsv.replace(/^﻿/, '')).then(function () {
-      copyEl.textContent = 'Copiato';
-    }).catch(function (err) { fail('Copia non riuscita', err); resize(); });
-  });
+  excelEl.addEventListener('click', downloadExcel);
 
   t.render(function () {
     applyTheme(window.CP.pop.detectTheme(t));

@@ -6,11 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Esporta</title>
-  <link rel="stylesheet" href="./css/section.css?v=1.12.0">
+  <link rel="stylesheet" href="./css/section.css?v=1.13.0">
 </head>
 <body class="cp-popup-body">
   <div id="cp-export" class="cp-popup">
-    <p class="cp-popup-info">Esporta le Checklist+ della bacheca in CSV: card, checklist e task con i giorni lavorati. Puoi limitare l'export a un mese e a un cliente. Ogni task conta nel mese della sua data di fine (o di inizio, o della deadline).</p>
+    <p class="cp-popup-info">Esporta le Checklist+ della bacheca. Il file Excel ha un riepilogo e un foglio per cliente; il CSV è una tabella unica. Puoi limitare l'export a un mese e a un cliente. Ogni task conta nel mese della sua data di fine (o di inizio, o della deadline).</p>
     <label id="cp-export-months" class="cp-popup-field" hidden>
       <span>Mese da esportare</span>
       <select id="cp-month-select"><option value="">Tutti i mesi</option></select>
@@ -21,19 +21,21 @@
     </label>
     <p id="cp-export-status" class="cp-export-status">Lettura delle card in corso...</p>
     <p id="cp-popup-error" class="cp-error" hidden></p>
-    <a id="cp-export-download" class="cp-btn cp-btn-primary cp-btn-block cp-btn-link" hidden>Scarica CSV</a>
-    <button type="button" id="cp-export-copy" class="cp-btn cp-btn-block" hidden>Copia negli appunti</button>
+    <button type="button" id="cp-export-excel" class="cp-btn cp-btn-primary cp-btn-block" hidden>Scarica Excel</button>
+    <a id="cp-export-download" class="cp-btn cp-btn-block cp-btn-link" hidden>Scarica CSV</a>
   </div>
 
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
-  <script src="./js/theme.js?v=1.12.0"></script>
-  <script src="./vendor/lz-string.min.js?v=1.12.0"></script>
-  <script src="./js/workdays.js?v=1.12.0"></script>
-  <script src="./js/calc.js?v=1.12.0"></script>
-  <script src="./js/store.js?v=1.12.0"></script>
-  <script src="./js/people.js?v=1.12.0"></script>
-  <script src="./js/popcommon.js?v=1.12.0"></script>
-  <script src="./js/exportcsv.js?v=1.12.0"></script>
-  <script src="./js/export.js?v=1.12.0"></script>
+  <script src="./js/theme.js?v=1.13.0"></script>
+  <script src="./vendor/lz-string.min.js?v=1.13.0"></script>
+  <script src="./js/workdays.js?v=1.13.0"></script>
+  <script src="./js/calc.js?v=1.13.0"></script>
+  <script src="./js/store.js?v=1.13.0"></script>
+  <script src="./js/people.js?v=1.13.0"></script>
+  <script src="./js/popcommon.js?v=1.13.0"></script>
+  <script src="./vendor/exceljs.min.js?v=1.13.0"></script>
+  <script src="./js/exportcsv.js?v=1.13.0"></script>
+  <script src="./js/exportxlsx.js?v=1.13.0"></script>
+  <script src="./js/export.js?v=1.13.0"></script>
 </body>
 </html>

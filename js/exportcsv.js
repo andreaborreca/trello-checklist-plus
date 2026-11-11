@@ -124,14 +124,13 @@
     });
   }
 
+  function half(n) { return Math.round(n * 2) / 2; }
+
   /**
-   * Builds the export as a flat table: one row per task, read left to right
-   * as Cliente -> Card -> Checklist -> Task, each followed by the worked days
-   * of that level. Every row is complete (no blank "staircase" cells), so the
-   * file can also be filtered or pivoted. Summary rows follow at the end.
-   *
-   * "Giorni card" is the card's total for the client of that row: a card can
-   * hold checklists of different clients.
+   * Collects the export data as a tree, after applying the filters:
+   *   clients[] -> cards[] -> lists[] -> items[]
+   * each level with its worked days and done/total counts, plus totals by
+   * work area and by month. Both the CSV and the Excel export are built from it.
    *
    * @param {Array<{name:string, state:object}>} cards  cards with their Checklist+ state
    * @param {Object<string,string>} memberNames         member id -> full name
@@ -139,21 +138,24 @@
    * @param {Set<string>|null} months                   month keys to include (null = all)
    * @param {Object<string,string>} [memberAreas]       member id -> area name (from the assignee)
    * @param {string} [onlyClient]                       single client to include ('' = all)
-   * @returns {{csv:string, stats:{cards:number, lists:number, tasks:number, effort:number}}}
+   * @param {string} [today]                            ISO date used to flag overdue open tasks
    */
-  function build(cards, memberNames, holidays, months, memberAreas, onlyClient) {
+  function collect(cards, memberNames, holidays, months, memberAreas, onlyClient, today) {
     cards = filterByClient(cards, onlyClient || '');
     cards = filterByMonths(cards, months || null);
     memberAreas = memberAreas || {};
+    memberNames = memberNames || {};
+    today = today || wd.todayIso();
 
-    function half(n) { return Math.round(n * 2) / 2; }
-    function sum(items) { return half(items.reduce(function (a, it) { return a + (it.w || 0); }, 0)); }
-
-    // Group: client -> card -> checklist, keeping the board order inside each client.
-    var groups = {};      // client label -> { effort, cards: [{ name, effort, lists: [list] }] }
-    var stats = { cards: 0, lists: 0, tasks: 0, effort: 0 };
+    var groups = {};
+    var stats = { cards: 0, lists: 0, tasks: 0, effort: 0, done: 0 };
     var byArea = {};
-    var doneAll = 0;
+    var byMonth = {};
+
+    function bump(map, key, item) {
+      var a = map[key] || (map[key] = { effort: 0, done: 0, total: 0 });
+      a.effort = half(a.effort + (item.w || 0)); a.total++; if (item.d) a.done++;
+    }
 
     cards.forEach(function (card) {
       var used = false;
@@ -162,13 +164,27 @@
         used = true;
         stats.lists++;
         var label = calc.resolveClient(list).value || NO_CLIENT_LABEL;
-        var g = groups[label] || (groups[label] = { effort: 0, cards: [] });
+        var g = groups[label] || (groups[label] = { label: label, effort: 0, done: 0, total: 0, cards: [] });
         var c = g.cards[g.cards.length - 1];
-        if (!c || c.card !== card) { c = { card: card, name: card.name, effort: 0, lists: [] }; g.cards.push(c); }
-        var e = sum(list.x);
-        c.lists.push(list);
-        c.effort = half(c.effort + e);
-        g.effort = half(g.effort + e);
+        if (!c || c.source !== card) { c = { source: card, name: card.name, effort: 0, done: 0, total: 0, lists: [] }; g.cards.push(c); }
+        var l = { name: list.n, effort: 0, done: 0, total: 0, items: [] };
+        list.x.forEach(function (item) {
+          var m = calc.itemMetrics(item, holidays);
+          var area = memberAreas[item.m] || NO_AREA;
+          var month = monthOf(item);
+          l.items.push({
+            text: item.t, member: memberNames[item.m] || '', area: area === NO_AREA ? '' : area,
+            done: !!item.d, s: item.s, dl: item.dl, e: item.e, w: item.w || 0, deviation: m.deviation,
+            month: month === NO_MONTH ? '' : month,
+            // Open task past its deadline.
+            overdue: !item.d && wd.isIso(item.dl) && today > item.dl
+          });
+          [l, c, g].forEach(function (lvl) { lvl.effort = half(lvl.effort + (item.w || 0)); lvl.total++; if (item.d) lvl.done++; });
+          stats.tasks++; stats.effort = half(stats.effort + (item.w || 0)); if (item.d) stats.done++;
+          bump(byArea, area, item);
+          bump(byMonth, month, item);
+        });
+        c.lists.push(l);
       });
       if (used) stats.cards++;
     });
@@ -176,54 +192,66 @@
     var labels = Object.keys(groups).filter(function (k) { return k !== NO_CLIENT_LABEL; }).sort();
     if (groups[NO_CLIENT_LABEL]) labels.push(NO_CLIENT_LABEL);
 
+    function ordered(map, lastKey) {
+      var keys = Object.keys(map).filter(function (k) { return k !== lastKey; }).sort();
+      if (map[lastKey]) keys.push(lastKey);
+      return keys.map(function (k) { return { key: k, effort: map[k].effort, done: map[k].done, total: map[k].total }; });
+    }
+
+    return {
+      clients: labels.map(function (k) { return groups[k]; }),
+      areas: ordered(byArea, NO_AREA),
+      months: ordered(byMonth, NO_MONTH),
+      stats: stats
+    };
+  }
+
+  /**
+   * CSV export: a flat table, one complete row per task, read left to right
+   * as Cliente -> Card -> Checklist -> Task, each followed by the worked days
+   * of that level; summary rows follow at the end.
+   * Same parameters as collect().
+   * @returns {{csv:string, stats:{cards:number, lists:number, tasks:number, effort:number}}}
+   */
+  function build(cards, memberNames, holidays, months, memberAreas, onlyClient) {
+    var data = collect(cards, memberNames, holidays, months, memberAreas, onlyClient);
     var lines = [row(HEADER)];
-    labels.forEach(function (label) {
-      var g = groups[label];
+
+    data.clients.forEach(function (g) {
       g.cards.forEach(function (c) {
-        c.lists.forEach(function (list) {
-          var listEffort = sum(list.x);
-          list.x.forEach(function (item) {
-            stats.tasks++;
-            stats.effort += item.w || 0;
-            if (item.d) doneAll++;
-            var m = calc.itemMetrics(item, holidays);
-            var area = memberAreas[item.m] || NO_AREA;
-            var agg = byArea[area] || (byArea[area] = { effort: 0 });
-            agg.effort += item.w || 0;
-            var month = monthOf(item);
+        c.lists.forEach(function (l) {
+          l.items.forEach(function (it) {
             lines.push(row([
-              label, num(g.effort), c.name, num(c.effort), list.n, num(listEffort), item.t, num(item.w || 0),
-              memberNames[item.m] || '', area === NO_AREA ? '' : area, item.d ? 'Sì' : 'No',
-              fmtDate(item.s), fmtDate(item.dl), fmtDate(item.e), num(m.deviation),
-              month === NO_MONTH ? '' : month.slice(5, 7) + '/' + month.slice(0, 4)
+              g.label, num(g.effort), c.name, num(c.effort), l.name, num(l.effort), it.text, num(it.w),
+              it.member, it.area, it.done ? 'Sì' : 'No',
+              fmtDate(it.s), fmtDate(it.dl), fmtDate(it.e), num(it.deviation),
+              it.month ? it.month.slice(5, 7) + '/' + it.month.slice(0, 4) : ''
             ]));
           });
         });
       });
     });
 
-    stats.effort = half(stats.effort);
-
     // Summary: label in the first column, days in the second.
     lines.push('');
-    lines.push(row(['TOTALE', num(stats.effort), stats.tasks + ' task, ' + doneAll + ' completati']));
-    if (labels.length > 1 || (labels.length === 1 && labels[0] !== NO_CLIENT_LABEL)) {
-      labels.forEach(function (label) {
-        lines.push(row([label === NO_CLIENT_LABEL ? 'TOTALE SENZA CLIENTE' : 'TOTALE CLIENTE ' + label, num(groups[label].effort)]));
+    lines.push(row(['TOTALE', num(data.stats.effort), data.stats.tasks + ' task, ' + data.stats.done + ' completati']));
+    var real = data.clients.filter(function (g) { return g.label !== NO_CLIENT_LABEL; });
+    if (real.length) {
+      data.clients.forEach(function (g) {
+        lines.push(row([g.label === NO_CLIENT_LABEL ? 'TOTALE SENZA CLIENTE' : 'TOTALE CLIENTE ' + g.label, num(g.effort)]));
       });
     }
-    var areaNames = Object.keys(byArea).filter(function (a) { return a !== NO_AREA; }).sort();
-    if (areaNames.length) {
-      if (byArea[NO_AREA]) areaNames.push(NO_AREA);
-      areaNames.forEach(function (a) {
-        lines.push(row([a === NO_AREA ? 'TOTALE SENZA AREA' : 'TOTALE AREA ' + a.toUpperCase(), num(half(byArea[a].effort))]));
+    if (data.areas.some(function (a) { return a.key !== NO_AREA; })) {
+      data.areas.forEach(function (a) {
+        lines.push(row([a.key === NO_AREA ? 'TOTALE SENZA AREA' : 'TOTALE AREA ' + a.key.toUpperCase(), num(a.effort)]));
       });
     }
+    var s = data.stats;
     // BOM so Excel reads UTF-8 accents correctly; CRLF line endings.
-    return { csv: '﻿' + lines.join('\r\n') + '\r\n', stats: stats };
+    return { csv: '﻿' + lines.join('\r\n') + '\r\n', stats: { cards: s.cards, lists: s.lists, tasks: s.tasks, effort: s.effort } };
   }
 
-  var api = { build: build, cell: cell, HEADER: HEADER, monthOf: monthOf, listMonths: listMonths, NO_MONTH: NO_MONTH, listClients: listClients, NO_CLIENT_LABEL: NO_CLIENT_LABEL };
+  var api = { build: build, collect: collect, cell: cell, HEADER: HEADER, monthOf: monthOf, listMonths: listMonths, NO_MONTH: NO_MONTH, listClients: listClients, NO_CLIENT_LABEL: NO_CLIENT_LABEL };
   if (isNode) module.exports = api;
   else { root.CP = root.CP || {}; root.CP.exportcsv = api; }
 })(typeof window !== 'undefined' ? window : this);
