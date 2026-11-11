@@ -12,9 +12,26 @@
   var calc = window.CP.calc;
 
   // Absolute URL of the gray icon (Trello requires gray icons on the card back).
-  var ICON = new URL('./img/icon.svg?v=1.4.2', window.location.href).href;
+  var ICON = new URL('./img/icon.svg?v=1.5.1', window.location.href).href;
+
+  // White variant for dark board headers.
+  var ICON_LIGHT = new URL('./img/icon-white.svg?v=1.5.1', window.location.href).href;
 
   TrelloPowerUp.initialize({
+    /**
+     * Button in the board header (next to the other Power-Up buttons):
+     * exports every Checklist+ of the board to CSV.
+     */
+    'board-buttons': function () {
+      return [{
+        icon: { dark: ICON_LIGHT, light: ICON },
+        text: 'Export Checklist+',
+        callback: function (t) {
+          return t.popup({ title: 'Esporta Checklist+', url: './export.html', height: 190 });
+        }
+      }];
+    },
+
     /**
      * Section on the back of the card hosting the whole Checklist+ UI.
      * Max height enforced by Trello: 1500px.
@@ -26,7 +43,7 @@
         content: {
           type: 'iframe',
           // Version in the URL so browsers never serve a stale cached page after an update.
-          url: t.signUrl('./section.html?v=1.4.2'),
+          url: t.signUrl('./section.html?v=1.5.1'),
           height: 140
         }
       };
