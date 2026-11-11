@@ -13,7 +13,9 @@
   /**
    * Theme for a popover, each source read on its own so that one failing
    * call cannot hide the others: 1) the theme passed by the opener in the
-   * popover args, 2) Trello's context, 3) the OS preference.
+   * popover args, 2) Trello's context, 3) the theme last seen by the card
+   * section, 4) the OS preference. Popovers also paint their own background,
+   * so a wrong guess is still readable.
    */
   function detectTheme(t) {
     try {
@@ -25,6 +27,10 @@
       var fromCtx = ctx.theme || ctx.initialTheme;
       if (fromCtx === 'dark' || fromCtx === 'light') return fromCtx;
     } catch (e) { /* no context */ }
+    try {
+      var stored = window.localStorage.getItem('cp-theme');
+      if (stored === 'dark' || stored === 'light') return stored;
+    } catch (e) { /* storage unavailable */ }
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
 

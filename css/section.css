@@ -1,8 +1,8 @@
 /* Inter (SIL Open Font License, see fonts/OFL-LICENSE.txt): its metrics match
    the text measured in Trello's checklist. Self-hosted: no third-party requests. */
-@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.10.0") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.10.0") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.10.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.10.1") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.10.1") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.10.1") format("woff2"); }
 
 /* Checklist+ styles, matched to Trello's native checklist.
    Dark values are sampled from Trello's current dark theme; light values
@@ -21,6 +21,7 @@
   --cp-primary: #1868db;
   --cp-selected: #e9f2fe;
   --cp-option-bg: #ffffff;
+  --cp-popup-bg: #ffffff;
   --cp-on-primary: #ffffff;
   --cp-track: #e5e6e8;
   --cp-fill: #505258;
@@ -46,6 +47,7 @@
   --cp-primary: #669df1;
   --cp-selected: #1c2b42;
   --cp-option-bg: #2b2c2f;
+  --cp-popup-bg: #2b2c2f;
   --cp-on-primary: #1f1f21;
   --cp-track: #303134;
   --cp-fill: #cecfd2;
@@ -388,3 +390,7 @@ button, input, textarea { font: inherit; color: inherit; }
 .cp-export-month { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; cursor: pointer; }
 .cp-export-month input { width: 16px; height: 16px; margin: 2px 0 0; flex: none; accent-color: var(--cp-primary); }
 .cp-export-month span { min-width: 0; }
+
+/* Popovers are opaque, in the colors of the detected theme: even if the theme
+   differs from Trello's, text and background always come from the same palette. */
+html:has(> body.cp-popup-body), body.cp-popup-body { background: var(--cp-popup-bg); }

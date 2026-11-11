@@ -12,10 +12,10 @@
   var calc = window.CP.calc;
 
   // Absolute URL of the gray icon (Trello requires gray icons on the card back).
-  var ICON = new URL('./img/icon.svg?v=1.10.0', window.location.href).href;
+  var ICON = new URL('./img/icon.svg?v=1.10.1', window.location.href).href;
 
   // White variant for dark board headers.
-  var ICON_LIGHT = new URL('./img/icon-white.svg?v=1.10.0', window.location.href).href;
+  var ICON_LIGHT = new URL('./img/icon-white.svg?v=1.10.1', window.location.href).href;
 
   TrelloPowerUp.initialize({
     /**
@@ -28,16 +28,19 @@
         text: 'Checklist+',
         callback: function (t) {
           var theme = '';
-          try { theme = (t.getContext() || {}).theme === 'dark' ? 'dark' : 'light'; } catch (e) { /* unknown */ }
+          try {
+            var ctxTheme = (t.getContext() || {}).theme;
+            if (ctxTheme === 'dark' || ctxTheme === 'light') theme = ctxTheme;
+          } catch (e) { /* unknown: the popover falls back to its other sources */ }
           function page(title, url, height) {
             return function (tt) { return tt.popup({ title: title, url: url, args: { th: theme }, height: height }); };
           }
           return t.popup({
             title: 'Checklist+',
             items: [
-              { text: 'Esporta CSV...', callback: page('Esporta Checklist+', './export.html', 250) },
-              { text: 'Clienti della bacheca...', callback: page('Clienti', './clientlist.html', 340) },
-              { text: 'Aree del team...', callback: page('Aree del team', './areas.html', 380) }
+              { text: 'Esporta CSV...', callback: page('Esporta Checklist+', './export.html?v=1.10.1', 250) },
+              { text: 'Clienti della bacheca...', callback: page('Clienti', './clientlist.html?v=1.10.1', 340) },
+              { text: 'Aree del team...', callback: page('Aree del team', './areas.html?v=1.10.1', 380) }
             ]
           });
         }
@@ -55,7 +58,7 @@
         content: {
           type: 'iframe',
           // Version in the URL so browsers never serve a stale cached page after an update.
-          url: t.signUrl('./section.html?v=1.10.0'),
+          url: t.signUrl('./section.html?v=1.10.1'),
           height: 140
         }
       };
