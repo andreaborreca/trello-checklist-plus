@@ -74,6 +74,8 @@
   };
   // Outline icons (stroke), closer to Trello's own line icons.
   var STROKE_ICONS = {
+    chevronDown: 'M6 9l6 6 6-6',
+    chevronUp: 'M6 15l6-6 6 6',
     clock: 'M12 3.75a8.25 8.25 0 1 0 0 16.5 8.25 8.25 0 1 0 0-16.5zM12 7.5V12l3 2'
   };
 
@@ -112,6 +114,18 @@
 
   function writeLocal(key, value) {
     try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* storage unavailable */ }
+  }
+
+  // Collapsed checklists: a personal preference, kept in this browser only.
+  function collapsedKey() { return 'cp-collapsed-' + cardId; }
+  function isCollapsed(listId) { return readLocal(collapsedKey(), []).indexOf(listId) >= 0; }
+
+  function toggleCollapsed(listId) {
+    var list = readLocal(collapsedKey(), []);
+    var idx = list.indexOf(listId);
+    if (idx >= 0) list.splice(idx, 1); else list.push(listId);
+    writeLocal(collapsedKey(), list);
+    render();
   }
 
   function hiddenKey() { return 'cp-hide-done-' + cardId; }
@@ -230,7 +244,7 @@
     return popup(ctx, {
       title: DATE_TITLES[field],
       // Versioned URL: the browser never reuses a cached copy of an older release.
-      url: './dates.html?v=1.13.2',
+      url: './dates.html?v=1.14.0',
       // The popover may not receive the theme from Trello: pass ours along.
       args: { l: list.i, i: item.i, f: field, th: currentTheme },
       height: 420
@@ -241,7 +255,7 @@
   function openMembers(ctx, ev, list, item) {
     return popup(ctx, {
       title: 'Assegna',
-      url: './members.html?v=1.13.2',
+      url: './members.html?v=1.14.0',
       args: { l: list.i, i: item.i, th: currentTheme },
       height: 420
     }, ev);
@@ -290,7 +304,7 @@
   function openClient(ev, list) {
     return popup(t, {
       title: 'Cliente',
-      url: './clients.html?v=1.13.2',
+      url: './clients.html?v=1.14.0',
       args: { l: list.i, th: currentTheme },
       height: 360
     }, ev);
@@ -328,7 +342,8 @@
         el('button', { cls: 'cp-btn cp-btn-subtle', text: 'Annulla', attrs: { type: 'button' }, on: { click: onCancel } })
       ])
     ]);
-    setTimeout(function () { area.focus(); area.setSelectionRange(area.value.length, area.value.length); }, 0);
+    // preventScroll: focusing must not make Trello scroll the card to this field.
+    setTimeout(function () { area.focus({ preventScroll: true }); area.setSelectionRange(area.value.length, area.value.length); }, 0);
     return box;
   }
 
@@ -519,8 +534,10 @@
         }
       });
 
+    var collapsed = isCollapsed(list.i);
+
     var headerRight = isEditingTitle ? null : el('div', { cls: 'cp-list-actions' }, [
-      tot.done > 0 ? el('button', {
+      !collapsed && tot.done > 0 ? el('button', {
         cls: 'cp-btn',
         text: hiding ? 'Mostra gli elementi selezionati (' + tot.done + ')' : 'Nascondi gli elementi selezionati',
         attrs: { type: 'button' },
@@ -536,7 +553,12 @@
               function (s) { s.l = s.l.filter(function (l) { return l.i !== list.i; }); });
           }
         }
-      })
+      }),
+      el('button', {
+        cls: 'cp-btn cp-collapse',
+        attrs: { type: 'button', title: collapsed ? 'Espandi la checklist' : 'Comprimi la checklist', 'aria-label': collapsed ? 'Espandi la checklist' : 'Comprimi la checklist', 'aria-expanded': String(!collapsed) },
+        on: { click: function () { toggleCollapsed(list.i); } }
+      }, [icon(collapsed ? 'chevronDown' : 'chevronUp')])
     ]);
 
     // No left gutter: the section already sits where Trello starts its
@@ -565,7 +587,8 @@
       ])
     ]);
 
-    var section = el('section', { cls: 'cp-list' }, [header, progress]);
+    var section = el('section', { cls: 'cp-list' + (collapsed ? ' is-collapsed' : '') }, [header, progress]);
+    if (collapsed) return section; // title, bar and totals only
     list.x.forEach(function (item) {
       if (hiding && item.d) return;
       section.appendChild(renderItem(list, item));
@@ -636,11 +659,25 @@
     sizeEl.classList.toggle('is-warn', pct >= 80);
   }
 
+  var rootEl = document.getElementById('cp-root');
+  var releaseTimer = null;
+
   function render() {
+    // Keep the current height while the content is rebuilt: without this the
+    // section collapses for an instant and Trello scrolls the card (the
+    // "jump" on every click). The lock is released once the new size is set.
+    rootEl.style.minHeight = rootEl.offsetHeight + 'px';
     listsEl.textContent = '';
     state.l.forEach(function (list) { listsEl.appendChild(renderList(list)); });
     renderNewList();
     renderSize();
+    if (releaseTimer) clearTimeout(releaseTimer);
+    releaseTimer = setTimeout(function () {
+      rootEl.style.minHeight = '';
+      resize();
+      // Remembered for the next time the card is opened (see client.js).
+      try { if (cardId) window.localStorage.setItem('cp-h-' + cardId, String(rootEl.offsetHeight)); } catch (e) { /* storage unavailable */ }
+    }, 60);
     resize();
   }
 
