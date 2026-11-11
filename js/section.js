@@ -225,9 +225,8 @@
   function openDates(ctx, ev, list, item) {
     return popup(ctx, {
       title: 'Date',
-      // Theme and version in the query: the popover is themed even when Trello
-      // gives it no context, and a cached older page is never reused.
-      url: './dates.html?v=1.4.1&th=' + currentTheme,
+      // Plain URL: query strings in popover URLs prevented Trello's client from starting.
+      url: './dates.html',
       // The popover may not receive the theme from Trello: pass ours along.
       args: { l: list.i, i: item.i, th: currentTheme },
       height: 300

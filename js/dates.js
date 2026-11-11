@@ -7,20 +7,37 @@
 (function () {
   'use strict';
 
-  var t = TrelloPowerUp.iframe();
   var store = window.CP.store;
   var calc = window.CP.calc;
   var wd = window.CP.workdays;
 
   var ID_RE = /^[a-z0-9]{1,12}$/;
-  var listId = t.arg('l');
-  var itemId = t.arg('i');
   var holidays = new Set(); // custom holidays: phase 2
 
   var form = document.getElementById('cp-dates');
   var inputs = { s: document.getElementById('cp-s'), dl: document.getElementById('cp-dl'), e: document.getElementById('cp-e') };
   var infoEl = document.getElementById('cp-info');
   var errorEl = document.getElementById('cp-popup-error');
+
+  function applyTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
+  }
+
+  // 1) Theme first, without depending on Trello: OS preference as initial guess.
+  applyTheme(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+
+  // 2) Trello client. Any failure is shown in the popover instead of failing silently.
+  var t, listId, itemId;
+  try {
+    t = TrelloPowerUp.iframe();
+    listId = t.arg('l');
+    itemId = t.arg('i');
+  } catch (err) {
+    errorEl.textContent = 'Errore di inizializzazione: ' + (err && err.message ? err.message : String(err));
+    errorEl.hidden = false;
+    if (window.console) console.error('[Checklist+]', err);
+    return;
+  }
 
   function resize() { t.sizeTo('#cp-dates').catch(function () {}); }
 
@@ -69,15 +86,8 @@
     });
   }
 
-  function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
-  }
-
-  /** Theme from the URL (set by the section), then popover args, Trello context, OS setting. */
+  /** Theme passed by the section in the popover args, then Trello context, then OS setting. */
   function detectTheme() {
-    var fromUrl = '';
-    try { fromUrl = new URLSearchParams(window.location.search).get('th') || ''; } catch (e) { /* ignore */ }
-    if (fromUrl === 'dark' || fromUrl === 'light') return fromUrl;
     try {
       var passed = t.arg('th');
       if (passed === 'dark' || passed === 'light') return passed;
@@ -110,6 +120,7 @@
   });
 
   t.render(function () {
+    applyTheme(detectTheme());
     return store.load(t).then(function (state) {
       var list = state.l.filter(function (l) { return l.i === listId; })[0];
       var item = list && list.x.filter(function (it) { return it.i === itemId; })[0];
@@ -118,6 +129,9 @@
       inputs.dl.value = item.dl;
       inputs.e.value = item.e;
       refreshInfo();
+    }).catch(function (err) {
+      showError('Impossibile leggere i dati della card: ' + (err && err.message ? err.message : String(err)));
+      if (window.console) console.error('[Checklist+]', err);
     });
   });
 })();
