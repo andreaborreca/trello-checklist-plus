@@ -222,14 +222,17 @@
     return function () { return ctx.closePopup(); };
   }
 
-  function openDates(ctx, ev, list, item) {
+  var DATE_TITLES = { s: 'Data di inizio', dl: 'Deadline', e: 'Data di fine' };
+
+  /** Opens the calendar popover for one date field: 's', 'dl' or 'e'. */
+  function openDates(ctx, ev, list, item, field) {
     return popup(ctx, {
-      title: 'Date',
+      title: DATE_TITLES[field],
       // Plain URL: query strings in popover URLs prevented Trello's client from starting.
       url: './dates.html',
       // The popover may not receive the theme from Trello: pass ours along.
-      args: { l: list.i, i: item.i, th: currentTheme },
-      height: 300
+      args: { l: list.i, i: item.i, f: field, th: currentTheme },
+      height: 420
     }, ev);
   }
 
@@ -283,7 +286,9 @@
     return popup(t, {
       title: 'Azioni elemento',
       items: [
-        { text: 'Date...', callback: function (tt) { return openDates(tt, null, list, item); } },
+        { text: 'Data di inizio...', callback: function (tt) { return openDates(tt, null, list, item, 's'); } },
+        { text: 'Deadline...', callback: function (tt) { return openDates(tt, null, list, item, 'dl'); } },
+        { text: 'Data di fine...', callback: function (tt) { return openDates(tt, null, list, item, 'e'); } },
         { text: 'Assegna...', callback: function (tt) { return openMembers(tt, null, list, item); } },
         {
           text: 'Elimina',
@@ -428,18 +433,17 @@
 
   /** Start / end dates and deviation in the meta line (plain text, clickable). */
   function metaDates(list, item, metrics) {
-    function open(ev) { openDates(t, ev, list, item); }
-    function field(label, iso) {
+    function field(label, iso, key) {
       return el('button', {
         cls: 'cp-meta cp-meta-link',
-        attrs: { type: 'button', title: 'Modifica le date' },
-        on: { click: open }
+        attrs: { type: 'button', title: 'Modifica: ' + label.toLowerCase() },
+        on: { click: function (ev) { openDates(t, ev, list, item, key); } }
       }, [
         el('span', { cls: 'cp-meta-label', text: label }),
         el('span', { cls: 'cp-meta-value' + (iso ? '' : ' is-empty'), text: iso ? calc.fmtChipDate(iso) : '—' })
       ]);
     }
-    var nodes = [field('Inizio', item.s), field('Fine', item.e)];
+    var nodes = [field('Inizio', item.s, 's'), field('Fine', item.e, 'e')];
     if (metrics.deviation !== null) {
       nodes.push(el('span', {
         cls: 'cp-meta cp-deviation ' + (metrics.deviation > 0 ? 'is-late' : 'is-done'),
@@ -459,7 +463,7 @@
     var btn = el('button', {
       cls: 'cp-due' + (status ? ' is-' + status : '') + (item.dl ? '' : ' is-empty'),
       attrs: { type: 'button', title: item.dl ? 'Deadline ' + calc.fmtShortDate(item.dl) : 'Imposta le date', 'aria-label': item.dl ? 'Deadline ' + calc.fmtChipDate(item.dl) : 'Imposta le date' },
-      on: { click: function (ev) { openDates(t, ev, list, item); } }
+      on: { click: function (ev) { openDates(t, ev, list, item, 'dl'); } }
     }, [icon('clock')]);
     if (item.dl) btn.appendChild(el('span', { text: calc.fmtChipDate(item.dl) }));
     return btn;

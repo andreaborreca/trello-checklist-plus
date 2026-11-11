@@ -1,8 +1,8 @@
 /* Inter (SIL Open Font License, see fonts/OFL-LICENSE.txt): its metrics match
    the text measured in Trello's checklist. Self-hosted: no third-party requests. */
-@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.5.1") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.5.1") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.5.1") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.7.2") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.7.2") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.7.2") format("woff2"); }
 
 /* Checklist+ styles, matched to Trello's native checklist.
    Dark values are sampled from Trello's current dark theme; light values
@@ -19,6 +19,8 @@
   --cp-hover: rgba(5, 21, 36, 0.06);
   --cp-checkbox-border: #7e8188;
   --cp-primary: #1868db;
+  --cp-selected: #e9f2fe;
+  --cp-option-bg: #ffffff;
   --cp-on-primary: #ffffff;
   --cp-track: #e5e6e8;
   --cp-fill: #505258;
@@ -42,6 +44,8 @@
   --cp-hover: rgba(206, 207, 210, 0.08);
   --cp-checkbox-border: #7e8188;
   --cp-primary: #669df1;
+  --cp-selected: #1c2b42;
+  --cp-option-bg: #2b2c2f;
   --cp-on-primary: #1f1f21;
   --cp-track: #303134;
   --cp-fill: #cecfd2;
@@ -324,3 +328,33 @@ button, input, textarea { font: inherit; color: inherit; }
 .cp-export-status { font-size: 14px; margin: 8px 0 12px; }
 .cp-btn-link { text-align: center; text-decoration: none; }
 .cp-btn-link[hidden] { display: none; }
+
+/* ---------- Single-date calendar popover (like Trello's "Modifica scadenza") ---------- */
+
+.cp-cal-nav { display: flex; align-items: center; gap: 2px; margin: 4px 0 8px; }
+.cp-cal-title { flex: 1 1 auto; text-align: center; font-weight: 600; }
+.cp-cal-navbtn {
+  width: 28px; height: 28px; border: 0; border-radius: 4px; background: transparent;
+  color: var(--cp-text-subtle); font-size: 16px; line-height: 1; cursor: pointer;
+}
+.cp-cal-navbtn:hover { background: var(--cp-hover); }
+.cp-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-bottom: 14px; }
+.cp-cal-wd { text-align: center; font-size: 12px; font-weight: 600; color: var(--cp-text-subtle); padding: 4px 0; }
+.cp-cal-day {
+  height: 32px; border: 0; border-radius: 4px; background: transparent;
+  color: var(--cp-text); cursor: pointer; position: relative;
+}
+.cp-cal-day:hover { background: var(--cp-hover); }
+.cp-cal-day.is-out { color: var(--cp-text-subtlest); }
+.cp-cal-day.is-today { color: var(--cp-primary); font-weight: 600; }
+.cp-cal-day.is-today::after {
+  content: ""; position: absolute; left: 6px; right: 6px; bottom: 2px; height: 2px; background: var(--cp-primary);
+}
+.cp-cal-day.is-selected { background: var(--cp-selected); color: var(--cp-primary); font-weight: 600; }
+.cp-cal-popup .cp-popup-field input { width: 124px; }
+
+.cp-popup-field select {
+  width: 100%; height: 36px; padding: 6px 8px; border: 1px solid var(--cp-checkbox-border);
+  border-radius: 4px; background: transparent; font: inherit; color: inherit;
+}
+.cp-popup-field select option { background: var(--cp-option-bg); color: var(--cp-text); }
