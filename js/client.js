@@ -12,10 +12,10 @@
   var calc = window.CP.calc;
 
   // Absolute URL of the gray icon (Trello requires gray icons on the card back).
-  var ICON = new URL('./img/icon.svg?v=1.7.2', window.location.href).href;
+  var ICON = new URL('./img/icon.svg?v=1.7.3', window.location.href).href;
 
   // White variant for dark board headers.
-  var ICON_LIGHT = new URL('./img/icon-white.svg?v=1.7.2', window.location.href).href;
+  var ICON_LIGHT = new URL('./img/icon-white.svg?v=1.7.3', window.location.href).href;
 
   TrelloPowerUp.initialize({
     /**
@@ -43,7 +43,7 @@
         content: {
           type: 'iframe',
           // Version in the URL so browsers never serve a stale cached page after an update.
-          url: t.signUrl('./section.html?v=1.7.2'),
+          url: t.signUrl('./section.html?v=1.7.3'),
           height: 140
         }
       };
@@ -53,7 +53,8 @@
      * Badges on the front of the card: one per Checklist+ list
      * ("NAME done/total · days gg"), so the breakdown is visible without
      * opening the card. Green = all done, red = something overdue.
-     * With many lists, the first ones are shown plus a summary badge.
+     * Pending lists come first; with many lists, the first six are shown
+     * plus a summary badge.
      */
     'card-badges': function (t) {
       return store.load(t).then(function (state) {
@@ -62,7 +63,18 @@
         var lists = state.l.filter(function (l) { return l.x.length > 0; });
         if (!lists.length) return [];
 
-        var badges = lists.slice(0, MAX_LIST_BADGES).map(function (list) {
+        // Pending lists first (overdue ones on top), completed lists last;
+        // the original order is kept within each group.
+        function rank(list) {
+          var tot = calc.checklistTotals(list, new Set());
+          if (tot.done === tot.total) return 2;
+          return list.x.some(function (it) { return calc.dueStatus(it, today, new Set()) === 'late'; }) ? 0 : 1;
+        }
+        var ordered = lists.map(function (l, i) { return { l: l, i: i, r: rank(l) }; })
+          .sort(function (a, b) { return a.r - b.r || a.i - b.i; })
+          .map(function (o) { return o.l; });
+
+        var badges = ordered.slice(0, MAX_LIST_BADGES).map(function (list) {
           var tot = calc.checklistTotals(list, new Set());
           var late = list.x.some(function (it) { return calc.dueStatus(it, today, new Set()) === 'late'; });
           var name = list.n.length > 22 ? list.n.slice(0, 21) + '…' : list.n;
