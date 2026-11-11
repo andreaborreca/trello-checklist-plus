@@ -16,7 +16,7 @@
   var HEADER = [
     'Card', 'Checklist', 'Task', 'Cliente', 'Assegnato a', 'Completato',
     'Inizio', 'Deadline', 'Fine', 'Giorni lavorati', 'Scostamento (gg lavorativi)',
-    'Task completati', 'Task totali', 'Mese'
+    'Task completati', 'Task totali', 'Mese', 'Area'
   ];
 
   /** "2026-11-09" -> "09/11/2026". */
@@ -49,6 +49,8 @@
   function num(n) { return { v: fmtNum(n) }; }
 
   var NO_MONTH = 'none';
+  var NO_AREA = 'Senza area';
+  var NO_CLIENT_LABEL = 'Senza cliente';
 
   /**
    * Month a task is attributed to ("YYYY-MM"): the month of its end date,
@@ -93,9 +95,13 @@
    * @param {Object<string,string>} memberNames         member id -> full name
    * @param {Set<string>} holidays                      custom holidays
    * @param {Set<string>|null} months                   month keys to include (null = all)
+   * @param {Object<string,string>} [memberAreas]       member id -> area name (from the assignee)
    * @returns {{csv:string, stats:{cards:number, lists:number, tasks:number, effort:number}}}
    */
-  function build(cards, memberNames, holidays, months) {
+  function build(cards, memberNames, holidays, months, memberAreas) {
+    memberAreas = memberAreas || {};
+    var byArea = {};   // area name -> { effort, done, total }
+    var byClient = {}; // client label -> { effort, done, total }
     cards = filterByMonths(cards, months || null);
     var lines = [row(HEADER)];
     var stats = { cards: 0, lists: 0, tasks: 0, effort: 0 };
@@ -117,21 +123,44 @@
       lists.forEach(function (list) {
         stats.lists++;
         var lt = calc.checklistTotals(list, holidays);
-        lines.push(row(['', list.n, '', calc.resolveClient(list).value, '', '', fmtDate(lt.start), fmtDate(lt.deadline), fmtDate(lt.end),
+        var client = calc.resolveClient(list).value || NO_CLIENT_LABEL;
+        var cagg = byClient[client] || (byClient[client] = { effort: 0, done: 0, total: 0 });
+        cagg.effort += lt.effort; cagg.done += lt.done; cagg.total += lt.total;
+        lines.push(row(['', list.n, '', client === NO_CLIENT_LABEL ? '' : client, '', '', fmtDate(lt.start), fmtDate(lt.deadline), fmtDate(lt.end),
           num(lt.effort), num(lt.deviation), num(lt.done), num(lt.total)]));
 
         list.x.forEach(function (item) {
           stats.tasks++;
           stats.effort += item.w || 0;
           var m = calc.itemMetrics(item, holidays);
+          var area = memberAreas[item.m] || NO_AREA;
+          var agg = byArea[area] || (byArea[area] = { effort: 0, done: 0, total: 0 });
+          agg.effort += item.w || 0; agg.total++; if (item.d) agg.done++;
           lines.push(row(['', '', item.t, '', memberNames[item.m] || '', item.d ? 'Sì' : 'No',
-            fmtDate(item.s), fmtDate(item.dl), fmtDate(item.e), num(item.w || 0), num(m.deviation), '', '', monthOf(item) === NO_MONTH ? '' : monthOf(item).slice(5, 7) + '/' + monthOf(item).slice(0, 4)]));
+            fmtDate(item.s), fmtDate(item.dl), fmtDate(item.e), num(item.w || 0), num(m.deviation), '', '', monthOf(item) === NO_MONTH ? '' : monthOf(item).slice(5, 7) + '/' + monthOf(item).slice(0, 4),
+            area === NO_AREA ? '' : area]));
         });
       });
     });
 
     stats.effort = Math.round(stats.effort * 2) / 2;
     lines.push(row(['TOTALE', '', '', '', '', '', '', '', '', num(stats.effort), '', num(doneAll), num(stats.tasks)]));
+    // Totals per client (a checklist shared by several clients is its own group).
+    var clientNames = Object.keys(byClient).filter(function (c) { return c !== NO_CLIENT_LABEL; }).sort();
+    if (clientNames.length) {
+      if (byClient[NO_CLIENT_LABEL]) clientNames.push(NO_CLIENT_LABEL);
+      clientNames.forEach(function (c) {
+        lines.push(row([(c === NO_CLIENT_LABEL ? 'TOTALE SENZA CLIENTE' : 'TOTALE CLIENTE ' + c.toUpperCase()), '', '', '', '', '', '', '', '', num(Math.round(byClient[c].effort * 2) / 2), '', num(byClient[c].done), num(byClient[c].total)]));
+      });
+    }
+    // Totals per work area (from each task's assignee), shown only when areas are in use.
+    var areaNames = Object.keys(byArea).filter(function (a) { return a !== NO_AREA; }).sort();
+    if (areaNames.length) {
+      if (byArea[NO_AREA]) areaNames.push(NO_AREA);
+      areaNames.forEach(function (a) {
+        lines.push(row(['TOTALE ' + a.toUpperCase(), '', '', '', '', '', '', '', '', num(Math.round(byArea[a].effort * 2) / 2), '', num(byArea[a].done), num(byArea[a].total)]));
+      });
+    }
     // BOM so Excel reads UTF-8 accents correctly; CRLF line endings.
     return { csv: '﻿' + lines.join('\r\n') + '\r\n', stats: stats };
   }

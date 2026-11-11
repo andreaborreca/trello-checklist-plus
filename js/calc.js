@@ -15,17 +15,36 @@
   }
 
   /**
-   * Client of a checklist: the explicit value if set, otherwise derived from
-   * the title using the "CLIENTE - ATTIVITA" convention (text before " - "),
-   * or the whole title when there is no separator.
+   * Client of a checklist.
+   * - list.c === NO_CLIENT ("-"): explicitly no client (internal work).
+   * - list.c set: the explicit value (one client, or several joined by " + ").
+   * - otherwise: detected from the title, as every known client of the board
+   *   whose name appears in it as a whole word (e.g. "NEXI - SVILUPPO BACKEND").
+   *   Titles without a known client (e.g. "CI/CD") resolve to no client.
    * Returns { value, derived } so the UI can show when it is a suggestion.
    */
+  var NO_CLIENT = '-';
+  var knownClients = [];
+
+  /** Sets the board's client list used for automatic detection. */
+  function setClients(list) {
+    knownClients = (list || []).map(normalizeLabel).filter(Boolean);
+  }
+
+  function escapeRe(text) { return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+  /** Known clients named in a title, in the order of the board's list. */
+  function clientsInTitle(title) {
+    var t = normalizeLabel(title);
+    return knownClients.filter(function (c) {
+      return new RegExp('(^|[^A-Z0-9])' + escapeRe(c) + '($|[^A-Z0-9])').test(t);
+    });
+  }
+
   function resolveClient(list) {
+    if (list.c === NO_CLIENT) return { value: '', derived: false };
     if (list.c) return { value: normalizeLabel(list.c), derived: false };
-    var title = String(list.n || '');
-    var idx = title.indexOf(' - ');
-    var guess = idx > 0 ? title.slice(0, idx) : title;
-    return { value: normalizeLabel(guess), derived: true };
+    return { value: clientsInTitle(list.n).join(' + '), derived: true };
   }
 
   /**
@@ -147,6 +166,8 @@
     dueStatus: dueStatus,
     normalizeLabel: normalizeLabel,
     resolveClient: resolveClient,
+    setClients: setClients,
+    NO_CLIENT: NO_CLIENT,
     itemMetrics: itemMetrics,
     checklistTotals: checklistTotals,
     cardTotals: cardTotals,

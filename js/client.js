@@ -12,10 +12,10 @@
   var calc = window.CP.calc;
 
   // Absolute URL of the gray icon (Trello requires gray icons on the card back).
-  var ICON = new URL('./img/icon.svg?v=1.7.3', window.location.href).href;
+  var ICON = new URL('./img/icon.svg?v=1.9.0', window.location.href).href;
 
   // White variant for dark board headers.
-  var ICON_LIGHT = new URL('./img/icon-white.svg?v=1.7.3', window.location.href).href;
+  var ICON_LIGHT = new URL('./img/icon-white.svg?v=1.9.0', window.location.href).href;
 
   TrelloPowerUp.initialize({
     /**
@@ -43,7 +43,7 @@
         content: {
           type: 'iframe',
           // Version in the URL so browsers never serve a stale cached page after an update.
-          url: t.signUrl('./section.html?v=1.7.3'),
+          url: t.signUrl('./section.html?v=1.9.0'),
           height: 140
         }
       };

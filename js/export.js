@@ -38,6 +38,7 @@
 
   var data = [];        // [{name, state}] for every card
   var names = {};       // member id -> name
+  var memberAreas = {}; // member id -> area name
   var boardName = '';
   var currentCsv = '';
   var blobUrl = '';
@@ -63,7 +64,7 @@
   /** Rebuilds the CSV for the current month selection and refreshes the buttons. */
   function refresh() {
     var sel = selection();
-    var out = exportcsv.build(data, names, new Set(), sel);
+    var out = exportcsv.build(data, names, new Set(), sel, memberAreas);
     var has = out.stats.tasks > 0;
     statusEl.textContent = has
       ? out.stats.cards + ' card, ' + out.stats.lists + ' checklist, ' + out.stats.tasks + ' task, ' + calc.fmtNumber(out.stats.effort) + ' giorni lavorati.'
@@ -97,6 +98,10 @@
 
   selectEl.addEventListener('change', refresh);
 
+  document.getElementById('cp-export-areas').addEventListener('click', function () {
+    t.popup({ title: 'Aree del team', url: './areas.html', args: { th: document.documentElement.getAttribute('data-theme') }, height: 380 });
+  });
+
   copyEl.addEventListener('click', function () {
     navigator.clipboard.writeText(currentCsv.replace(/^﻿/, '')).then(function () {
       copyEl.textContent = 'Copiato';
@@ -111,8 +116,13 @@
 
     return Promise.all([
       t.cards('id', 'name'),
-      t.board('name', 'members')
+      t.board('name', 'members'),
+      window.CP.people.loadAreas(t),
+      window.CP.people.loadClients(t)
     ]).then(function (res) {
+      calc.setClients(res[3] || []);
+      var areaKeys = res[2] || {};
+      Object.keys(areaKeys).forEach(function (id) { memberAreas[id] = window.CP.people.areaName(areaKeys[id]); });
       var cards = res[0] || [];
       var board = res[1] || {};
       boardName = board.name || '';

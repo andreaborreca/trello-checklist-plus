@@ -1,8 +1,8 @@
 /* Inter (SIL Open Font License, see fonts/OFL-LICENSE.txt): its metrics match
    the text measured in Trello's checklist. Self-hosted: no third-party requests. */
-@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.7.3") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.7.3") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.7.3") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.9.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.9.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.9.0") format("woff2"); }
 
 /* Checklist+ styles, matched to Trello's native checklist.
    Dark values are sampled from Trello's current dark theme; light values
@@ -358,3 +358,33 @@ button, input, textarea { font: inherit; color: inherit; }
   border-radius: 4px; background: transparent; font: inherit; color: inherit;
 }
 .cp-popup-field select option { background: var(--cp-option-bg); color: var(--cp-text); }
+
+/* ---------- Member picker and team areas popovers ---------- */
+
+.cp-member-search {
+  width: 100%; height: 36px; padding: 6px 12px; margin-bottom: 8px;
+  border: 1px solid var(--cp-checkbox-border); border-radius: 4px; background: transparent;
+}
+.cp-member-group { font-size: 12px; font-weight: 600; color: var(--cp-text-subtle); margin: 10px 0 6px; }
+.cp-member-row, .cp-area-row {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 4px 6px;
+  border: 0; border-radius: 4px; background: transparent; text-align: left; cursor: pointer;
+}
+.cp-member-row:hover, .cp-member-row.is-assigned { background: var(--cp-hover); }
+.cp-member-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-member-check { flex: none; color: var(--cp-text-subtle); }
+.cp-avatar-lg { width: 32px; height: 32px; font-size: 14px; flex: none; cursor: inherit; }
+.cp-area-row { cursor: default; padding: 4px 0; }
+.cp-area-row select {
+  flex: none; width: 108px; height: 32px; padding: 4px 6px; border: 1px solid var(--cp-checkbox-border);
+  border-radius: 4px; background: transparent; font: inherit; color: inherit;
+}
+.cp-area-row select option { background: var(--cp-option-bg); color: var(--cp-text); }
+#cp-member-remove { margin-top: 12px; }
+
+.cp-client-list { margin: 2px 0 8px 24px; max-height: 170px; overflow-y: auto; }
+
+/* Option rows (radio / checkbox + label) used in the popovers. */
+.cp-export-month { display: flex; align-items: flex-start; gap: 8px; padding: 4px 0; cursor: pointer; }
+.cp-export-month input { width: 16px; height: 16px; margin: 2px 0 0; flex: none; accent-color: var(--cp-primary); }
+.cp-export-month span { min-width: 0; }

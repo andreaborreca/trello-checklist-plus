@@ -236,28 +236,13 @@
     }, ev);
   }
 
+  /** Opens the member picker popover (Trello-like, grouped by work area). */
   function openMembers(ctx, ev, list, item) {
-    var items = members.map(function (m) {
-      return {
-        text: (m.fullName || m.username || m.id) + (m.id === item.m ? '  (assegnato)' : ''),
-        callback: function (tt) {
-          return saveItem(list.i, item.i, function (it) { it.m = m.id; }, tt).then(closeWith(tt));
-        }
-      };
-    });
-    if (item.m) {
-      items.unshift({
-        text: 'Rimuovi assegnazione',
-        alwaysVisible: true,
-        callback: function (tt) {
-          return saveItem(list.i, item.i, function (it) { it.m = ''; }, tt).then(closeWith(tt));
-        }
-      });
-    }
     return popup(ctx, {
       title: 'Assegna',
-      items: items,
-      search: { placeholder: 'Cerca membri', empty: 'Nessun membro trovato', searching: 'Ricerca in corso...' }
+      url: './members.html',
+      args: { l: list.i, i: item.i, th: currentTheme },
+      height: 420
     }, ev);
   }
 
@@ -300,47 +285,13 @@
     }, ev);
   }
 
-  /** Clients already used on this card (explicit values), for quick reuse. */
-  function knownClients() {
-    var seen = {};
-    state.l.forEach(function (l) { if (l.c) seen[calc.normalizeLabel(l.c)] = true; });
-    return Object.keys(seen).sort();
-  }
-
+  /** Opens the client popover of a checklist (automatic, none, or one or more clients). */
   function openClient(ev, list) {
-    var auto = calc.resolveClient({ n: list.n }).value;
     return popup(t, {
-      title: 'Cliente (per l\'export)',
-      items: function (tt, options) {
-        var query = calc.normalizeLabel(options && options.search);
-        var out = [{
-          text: 'Automatico dal titolo: ' + (auto || '-'),
-          alwaysVisible: true,
-          callback: function (t2) {
-            return save(function (s) { var l = findList(s, list.i); if (l) l.c = ''; }, t2).then(closeWith(t2));
-          }
-        }];
-        knownClients().forEach(function (c) {
-          if (query && c.indexOf(query) < 0) return;
-          out.push({
-            text: c,
-            callback: function (t2) {
-              return save(function (s) { var l = findList(s, list.i); if (l) l.c = c; }, t2).then(closeWith(t2));
-            }
-          });
-        });
-        if (query && knownClients().indexOf(query) < 0) {
-          out.push({
-            text: 'Usa "' + query.slice(0, 60) + '"',
-            alwaysVisible: true,
-            callback: function (t2) {
-              return save(function (s) { var l = findList(s, list.i); if (l) l.c = query.slice(0, 60); }, t2).then(closeWith(t2));
-            }
-          });
-        }
-        return out;
-      },
-      search: { placeholder: 'Scrivi o scegli un cliente', empty: 'Nessun cliente', searching: 'Ricerca in corso...' }
+      title: 'Cliente',
+      url: './clients.html',
+      args: { l: list.i, th: currentTheme },
+      height: 360
     }, ev);
   }
 
@@ -352,36 +303,10 @@
     t.sizeTo('#cp-root').catch(function () { /* iframe not ready yet */ });
   }
 
-  function initials(name) {
-    var parts = String(name || '').trim().split(/\s+/).filter(Boolean);
-    return ((parts[0] || '?')[0] + (parts.length > 1 ? parts[parts.length - 1][0] : '')).toUpperCase();
-  }
-
-  // Hosts Trello uses for member profile photos. Anything else is ignored.
-  var AVATAR_HOSTS = ['trello-members.s3.amazonaws.com', '.trello.com', '.trellocdn.com', '.atl-paas.net'];
-
-  /** Safe https URL of the member's profile photo, or '' when there is none. */
-  function avatarUrl(member) {
-    var raw = member && (member.avatar || member.avatarUrl);
-    if (typeof raw !== 'string' || !raw) return '';
-    try {
-      var u = new URL(raw);
-      var host = u.hostname;
-      var allowed = u.protocol === 'https:' && AVATAR_HOSTS.some(function (h) {
-        return h.charAt(0) === '.' ? host.slice(-h.length) === h : host === h;
-      });
-      if (!allowed) return '';
-      // Base avatar URLs need a size suffix; full image URLs are used as they are.
-      return /\.(png|jpe?g|gif|webp)$/i.test(u.pathname) ? u.href : u.href.replace(/\/$/, '') + '/50.png';
-    } catch (e) { return ''; }
-  }
-
-  function avatarColor(id) {
-    var palette = ['#ae2e24', '#a54800', '#7f5f01', '#216e4e', '#206a83', '#0055cc', '#5e4db2', '#943d73'];
-    var h = 0;
-    for (var i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-    return palette[h % palette.length];
-  }
+  // Avatar helpers live in people.js (shared with the popovers).
+  var initials = window.CP.people.initials;
+  var avatarUrl = window.CP.people.avatarUrl;
+  var avatarColor = window.CP.people.avatarColor;
 
   /** Inline editor with Salva/Annulla, like Trello's checklist item editing. */
   function inlineEditor(value, maxLength, onSave, onCancel) {
@@ -627,7 +552,7 @@
         el('span', { cls: 'cp-progress-pct', text: pct + '%' }),
         el('button', {
           cls: 'cp-client' + (client.derived ? ' is-derived' : ''),
-          text: client.value || 'Cliente',
+          text: client.value || (list.c === calc.NO_CLIENT ? 'Interno' : 'Cliente?'),
           attrs: { type: 'button', title: 'Cliente per l\'export' + (client.derived ? ' (dedotto dal titolo)' : '') },
           on: { click: function (ev) { openClient(ev, list); } }
         }),
@@ -730,7 +655,8 @@
 
   t.render(function () {
     return Promise.all([
-      store.load(t),
+      // Board client list first: it drives the automatic client detection.
+      window.CP.people.loadClients(t).then(function (c) { calc.setClients(c); return store.load(t); }),
       t.board('members').catch(function () { return { members: [] }; }),
       t.card('id')
     ]).then(function (res) {
