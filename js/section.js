@@ -24,6 +24,7 @@
 
   var state = store.emptyState();
   var currentTheme = 'light';
+  var teamAreas = {};      // member id -> area key (for the member picker)
   var boardClients = [];   // client list of the board (for detection and the new-checklist form)
   var members = [];
   var cardId = '';
@@ -75,7 +76,7 @@
   // Outline icons (stroke), closer to Trello's own line icons.
   var STROKE_ICONS = {
     chevronDown: 'M6 9l6 6 6-6',
-    chevronUp: 'M6 15l6-6 6 6',
+    chevronRight: 'M9 6l6 6-6 6',
     clock: 'M12 3.75a8.25 8.25 0 1 0 0 16.5 8.25 8.25 0 1 0 0-16.5zM12 7.5V12l3 2'
   };
 
@@ -224,55 +225,51 @@
   }
 
   /* ------------------------------------------------------------------ */
-  /* Trello popovers                                                    */
+  /* Popovers inside the section (see panels.js)                        */
   /* ------------------------------------------------------------------ */
 
-  /** Opens a Trello popover, anchoring it to the click when we have one. */
-  function popup(ctx, opts, ev) {
-    if (ev) opts.mouseEvent = ev;
-    return ctx.popup(opts);
-  }
-
-  function closeWith(ctx) {
-    return function () { return ctx.closePopup(); };
-  }
+  var panelsApi = window.CP.panels;
+  var panels = panelsApi.create(document.getElementById('cp-root'), function () { resize(); });
 
   var DATE_TITLES = { s: 'Data di inizio', dl: 'Deadline', e: 'Data di fine' };
 
-  /** Opens the calendar popover for one date field: 's', 'dl' or 'e'. */
-  function openDates(ctx, ev, list, item, field) {
-    return popup(ctx, {
-      title: DATE_TITLES[field],
-      // Versioned URL: the browser never reuses a cached copy of an older release.
-      url: './dates.html?v=1.14.0',
-      // The popover may not receive the theme from Trello: pass ours along.
-      args: { l: list.i, i: item.i, f: field, th: currentTheme },
-      height: 420
-    }, ev);
+  /** Element a panel is anchored to: the clicked control (null keeps the previous anchor). */
+  function anchorOf(ev) { return ev && ev.currentTarget ? ev.currentTarget : null; }
+
+  /** Calendar for one date field of an item: 's', 'dl' or 'e'. */
+  function openDates(ev, list, item, field) {
+    panels.open(anchorOf(ev), DATE_TITLES[field], function (body, ctl) {
+      panelsApi.calendar(body, ctl, {
+        field: field,
+        label: DATE_TITLES[field],
+        current: { s: item.s, dl: item.dl, e: item.e },
+        holidays: holidays,
+        onSave: function (iso) { panels.close(); saveItem(list.i, item.i, function (it) { it[field] = iso; }).catch(function () {}); },
+        onRemove: function () { panels.close(); saveItem(list.i, item.i, function (it) { it[field] = ''; }).catch(function () {}); }
+      });
+    });
   }
 
-  /** Opens the member picker popover (Trello-like, grouped by work area). */
-  function openMembers(ctx, ev, list, item) {
-    return popup(ctx, {
-      title: 'Assegna',
-      url: './members.html?v=1.14.0',
-      args: { l: list.i, i: item.i, th: currentTheme },
-      height: 420
-    }, ev);
+  /** Member picker (Trello-like, grouped by work area). */
+  function openMembers(ev, list, item) {
+    panels.open(anchorOf(ev), 'Assegna', function (body, ctl) {
+      panelsApi.memberPicker(body, ctl, {
+        members: members,
+        areas: teamAreas,
+        assigned: item.m || '',
+        onPick: function (memberId) { panels.close(); saveItem(list.i, item.i, function (it) { it.m = memberId; }).catch(function () {}); }
+      });
+    });
   }
 
-  function confirmDelete(ctx, ev, title, message, mutate) {
-    return popup(ctx, {
-      type: 'confirm',
-      title: title,
-      message: message,
-      confirmText: 'Elimina',
-      confirmStyle: 'danger',
-      cancelText: 'Annulla',
-      onConfirm: function (tt) {
-        return save(mutate, tt).then(closeWith(tt));
-      }
-    }, ev);
+  function confirmDelete(ev, title, message, mutate) {
+    panels.open(anchorOf(ev), title, function (body, ctl) {
+      panelsApi.confirm(body, ctl, {
+        message: message,
+        confirmText: 'Elimina',
+        onConfirm: function () { panels.close(); save(mutate).catch(function () {}); }
+      });
+    });
   }
 
   function deleteItemMutation(listId, itemId) {
@@ -283,31 +280,30 @@
   }
 
   function openItemMenu(ev, list, item) {
-    return popup(t, {
-      title: 'Azioni elemento',
-      items: [
-        { text: 'Data di inizio...', callback: function (tt) { return openDates(tt, null, list, item, 's'); } },
-        { text: 'Deadline...', callback: function (tt) { return openDates(tt, null, list, item, 'dl'); } },
-        { text: 'Data di fine...', callback: function (tt) { return openDates(tt, null, list, item, 'e'); } },
-        { text: 'Assegna...', callback: function (tt) { return openMembers(tt, null, list, item); } },
+    panels.open(anchorOf(ev), 'Azioni elemento', function (body, ctl) {
+      panelsApi.menu(body, ctl, [
+        { text: 'Data di inizio...', action: function () { openDates(null, list, item, 's'); } },
+        { text: 'Deadline...', action: function () { openDates(null, list, item, 'dl'); } },
+        { text: 'Data di fine...', action: function () { openDates(null, list, item, 'e'); } },
+        { text: 'Assegna...', action: function () { openMembers(null, list, item); } },
         {
-          text: 'Elimina',
-          callback: function (tt) {
-            return confirmDelete(tt, null, 'Eliminare l\'elemento?', 'L\'eliminazione non si può annullare.', deleteItemMutation(list.i, item.i));
-          }
+          text: 'Elimina', danger: true,
+          action: function () { confirmDelete(null, 'Eliminare l\'elemento?', 'L\'eliminazione non si può annullare.', deleteItemMutation(list.i, item.i)); }
         }
-      ]
-    }, ev);
+      ]);
+    });
   }
 
-  /** Opens the client popover of a checklist (automatic, none, or one or more clients). */
+  /** Client of a checklist (automatic, none, or one or more clients). */
   function openClient(ev, list) {
-    return popup(t, {
-      title: 'Cliente',
-      url: './clients.html?v=1.14.0',
-      args: { l: list.i, th: currentTheme },
-      height: 360
-    }, ev);
+    panels.open(anchorOf(ev), 'Cliente', function (body, ctl) {
+      panelsApi.clientPicker(body, ctl, {
+        title: list.n,
+        clients: boardClients,
+        value: list.c || '',
+        onSave: function (value) { panels.close(); save(function (s) { var l = findList(s, list.i); if (l) l.c = value; }).catch(function () {}); }
+      });
+    });
   }
 
   /* ------------------------------------------------------------------ */
@@ -378,7 +374,7 @@
       return el('button', {
         cls: 'cp-meta cp-meta-link',
         attrs: { type: 'button', title: 'Modifica: ' + label.toLowerCase() },
-        on: { click: function (ev) { openDates(t, ev, list, item, key); } }
+        on: { click: function (ev) { openDates(ev, list, item, key); } }
       }, [
         el('span', { cls: 'cp-meta-label', text: label }),
         el('span', { cls: 'cp-meta-value' + (iso ? '' : ' is-empty'), text: iso ? calc.fmtChipDate(iso) : '—' })
@@ -404,7 +400,7 @@
     var btn = el('button', {
       cls: 'cp-due' + (status ? ' is-' + status : '') + (item.dl ? '' : ' is-empty'),
       attrs: { type: 'button', title: item.dl ? 'Deadline ' + calc.fmtShortDate(item.dl) : 'Imposta le date', 'aria-label': item.dl ? 'Deadline ' + calc.fmtChipDate(item.dl) : 'Imposta le date' },
-      on: { click: function (ev) { openDates(t, ev, list, item, 'dl'); } }
+      on: { click: function (ev) { openDates(ev, list, item, 'dl'); } }
     }, [icon('clock')]);
     if (item.dl) btn.appendChild(el('span', { text: calc.fmtChipDate(item.dl) }));
     return btn;
@@ -415,7 +411,7 @@
     var btn = el('button', {
       cls: 'cp-avatar' + (member ? '' : ' is-empty'),
       attrs: { type: 'button', title: member ? (member.fullName || member.username) : 'Assegna', 'aria-label': member ? 'Assegnato a ' + (member.fullName || member.username) : 'Assegna' },
-      on: { click: function (ev) { openMembers(t, ev, list, item); } }
+      on: { click: function (ev) { openMembers(ev, list, item); } }
     });
     if (member) {
       var photo = avatarUrl(member);
@@ -549,22 +545,23 @@
         attrs: { type: 'button' },
         on: {
           click: function (ev) {
-            confirmDelete(t, ev, 'Eliminare ' + list.n.slice(0, 40) + '?', 'La checklist e i suoi elementi verranno eliminati definitivamente.',
+            confirmDelete(ev, 'Eliminare ' + list.n.slice(0, 40) + '?', 'La checklist e i suoi elementi verranno eliminati definitivamente.',
               function (s) { s.l = s.l.filter(function (l) { return l.i !== list.i; }); });
           }
         }
-      }),
-      el('button', {
-        cls: 'cp-btn cp-collapse',
-        attrs: { type: 'button', title: collapsed ? 'Espandi la checklist' : 'Comprimi la checklist', 'aria-label': collapsed ? 'Espandi la checklist' : 'Comprimi la checklist', 'aria-expanded': String(!collapsed) },
-        on: { click: function () { toggleCollapsed(list.i); } }
-      }, [icon(collapsed ? 'chevronDown' : 'chevronUp')])
+      })
     ]);
+
+    var collapseBtn = el('button', {
+      cls: 'cp-collapse',
+      attrs: { type: 'button', title: collapsed ? 'Espandi la checklist' : 'Comprimi la checklist', 'aria-label': collapsed ? 'Espandi la checklist' : 'Comprimi la checklist', 'aria-expanded': String(!collapsed) },
+      on: { click: function () { toggleCollapsed(list.i); } }
+    }, [icon(collapsed ? 'chevronRight' : 'chevronDown')]);
 
     // No left gutter: the section already sits where Trello starts its
     // content, so title and bar start at the very left edge.
     var header = el('div', { cls: 'cp-row cp-list-header' }, [
-      el('div', { cls: 'cp-list-head' }, [titleNode, headerRight])
+      el('div', { cls: 'cp-list-head' }, [isEditingTitle ? null : collapseBtn, titleNode, headerRight])
     ]);
 
     var fill = el('div', { cls: 'cp-progress-fill' + (pct === 100 ? ' is-complete' : '') });
@@ -666,6 +663,7 @@
     // Keep the current height while the content is rebuilt: without this the
     // section collapses for an instant and Trello scrolls the card (the
     // "jump" on every click). The lock is released once the new size is set.
+    if (panels.isOpen()) panels.close();
     rootEl.style.minHeight = rootEl.offsetHeight + 'px';
     listsEl.textContent = '';
     state.l.forEach(function (list) { listsEl.appendChild(renderList(list)); });
@@ -673,7 +671,7 @@
     renderSize();
     if (releaseTimer) clearTimeout(releaseTimer);
     releaseTimer = setTimeout(function () {
-      rootEl.style.minHeight = '';
+      rootEl.style.minHeight = panels.minHeight() ? panels.minHeight() + 'px' : '';
       resize();
       // Remembered for the next time the card is opened (see client.js).
       try { if (cardId) window.localStorage.setItem('cp-h-' + cardId, String(rootEl.offsetHeight)); } catch (e) { /* storage unavailable */ }
@@ -708,8 +706,10 @@
       // Board client list first: it drives the automatic client detection.
       window.CP.people.loadClients(t).then(function (c) { boardClients = c; calc.setClients(c); return store.load(t); }),
       t.board('members').catch(function () { return { members: [] }; }),
-      t.card('id')
+      t.card('id'),
+      window.CP.people.loadAreas(t)
     ]).then(function (res) {
+      teamAreas = res[3] || {};
       state = res[0];
       members = (res[1].members || []).slice().sort(function (a, b) {
         return String(a.fullName || '').localeCompare(String(b.fullName || ''));

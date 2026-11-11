@@ -1,8 +1,8 @@
 /* Inter (SIL Open Font License, see fonts/OFL-LICENSE.txt): its metrics match
    the text measured in Trello's checklist. Self-hosted: no third-party requests. */
-@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.14.0") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.14.0") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.14.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.15.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.15.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.15.0") format("woff2"); }
 
 /* Checklist+ styles, matched to Trello's native checklist.
    Dark values are sampled from Trello's current dark theme; light values
@@ -401,6 +401,42 @@ html:has(> body.cp-popup-body), body.cp-popup-body { background: var(--cp-popup-
 }
 .cp-new-list-client option { background: var(--cp-option-bg); color: var(--cp-text); }
 
-/* Collapse / expand button of a checklist */
-.cp-collapse { padding: 5px 7px; display: inline-flex; align-items: center; }
 .cp-list.is-collapsed { margin-bottom: 12px; }
+
+/* ---------- Popovers inside the section (panels.js) ---------- */
+
+#cp-root { position: relative; }
+.cp-pop {
+  position: absolute;
+  z-index: 10;
+  background: var(--cp-popup-bg);
+  border: 1px solid var(--cp-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 12px rgba(0, 0, 0, 0.25), 0 0 1px rgba(0, 0, 0, 0.3);
+}
+.cp-pop-head { display: flex; align-items: center; padding: 8px 8px 4px 12px; }
+.cp-pop-title { flex: 1 1 auto; text-align: center; font-weight: 600; color: var(--cp-text-subtle); padding-left: 24px; }
+.cp-pop-close {
+  width: 28px; height: 28px; border: 0; border-radius: 4px; background: transparent;
+  color: var(--cp-text-subtle); font-size: 18px; line-height: 1; cursor: pointer;
+}
+.cp-pop-close:hover { background: var(--cp-hover); }
+.cp-pop-body { padding: 4px 12px 12px; }
+.cp-pop-menu { padding: 4px 0 8px; }
+.cp-pop-item {
+  display: block; width: 100%; padding: 6px 12px; border: 0; background: transparent;
+  text-align: left; color: var(--cp-text); cursor: pointer;
+}
+.cp-pop-item:hover { background: var(--cp-hover); }
+.cp-pop-item.is-danger { color: var(--cp-red-text); }
+.cp-pop-message { margin: 4px 0 12px; }
+.cp-btn-danger { background: var(--cp-red); border-color: var(--cp-red); color: var(--cp-on-status); }
+.cp-btn-danger:hover { background: var(--cp-red); filter: brightness(1.08); }
+.cp-pop .cp-member-list { max-height: 300px; overflow-y: auto; }
+
+/* Collapse chevron on the left of the checklist title */
+.cp-collapse {
+  flex: none; width: 24px; height: 24px; margin-right: 2px; padding: 0; border: 0; border-radius: 4px;
+  background: transparent; color: var(--cp-text-subtle); display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.cp-collapse:hover { background: var(--cp-hover); }
