@@ -11,6 +11,24 @@
   }
 
   /**
+   * Theme for a popover, each source read on its own so that one failing
+   * call cannot hide the others: 1) the theme passed by the opener in the
+   * popover args, 2) Trello's context, 3) the OS preference.
+   */
+  function detectTheme(t) {
+    try {
+      var passed = t.arg('th');
+      if (passed === 'dark' || passed === 'light') return passed;
+    } catch (e) { /* no args */ }
+    try {
+      var ctx = t.getContext() || {};
+      var fromCtx = ctx.theme || ctx.initialTheme;
+      if (fromCtx === 'dark' || fromCtx === 'light') return fromCtx;
+    } catch (e) { /* no context */ }
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+
+  /**
    * Starts the popover. Returns the Trello client, or null after showing the
    * error in #cp-popup-error.
    */
@@ -19,12 +37,7 @@
     applyTheme(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     try {
       var t = TrelloPowerUp.iframe();
-      try {
-        var passed = t.arg('th');
-        var ctx = t.getContext() || {};
-        if (passed === 'dark' || passed === 'light') applyTheme(passed);
-        else if (ctx.theme || ctx.initialTheme) applyTheme(ctx.theme || ctx.initialTheme);
-      } catch (e) { /* keep OS theme */ }
+      applyTheme(detectTheme(t));
       return t;
     } catch (err) {
       fail('Errore di inizializzazione', err);
@@ -42,5 +55,5 @@
   }
 
   window.CP = window.CP || {};
-  window.CP.pop = { start: start, fail: fail, applyTheme: applyTheme };
+  window.CP.pop = { start: start, fail: fail, applyTheme: applyTheme, detectTheme: detectTheme };
 })();

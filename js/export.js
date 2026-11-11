@@ -98,10 +98,6 @@
 
   selectEl.addEventListener('change', refresh);
 
-  document.getElementById('cp-export-areas').addEventListener('click', function () {
-    t.popup({ title: 'Aree del team', url: './areas.html', args: { th: document.documentElement.getAttribute('data-theme') }, height: 380 });
-  });
-
   copyEl.addEventListener('click', function () {
     navigator.clipboard.writeText(currentCsv.replace(/^﻿/, '')).then(function () {
       copyEl.textContent = 'Copiato';
@@ -109,10 +105,7 @@
   });
 
   t.render(function () {
-    try {
-      var ctx = t.getContext() || {};
-      if (ctx.theme || ctx.initialTheme) applyTheme(ctx.theme || ctx.initialTheme);
-    } catch (e) { /* keep OS theme */ }
+    applyTheme(window.CP.pop.detectTheme(t));
 
     return Promise.all([
       t.cards('id', 'name'),

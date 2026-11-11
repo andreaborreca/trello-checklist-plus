@@ -1,8 +1,8 @@
 /* Inter (SIL Open Font License, see fonts/OFL-LICENSE.txt): its metrics match
    the text measured in Trello's checklist. Self-hosted: no third-party requests. */
-@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.9.0") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.9.0") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.9.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.10.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.10.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.10.0") format("woff2"); }
 
 /* Checklist+ styles, matched to Trello's native checklist.
    Dark values are sampled from Trello's current dark theme; light values

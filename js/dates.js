@@ -186,12 +186,7 @@
   document.getElementById('cp-clear').addEventListener('click', function () { persist(''); });
 
   t.render(function () {
-    try {
-      var passed = t.arg('th');
-      var ctx = t.getContext() || {};
-      if (passed === 'dark' || passed === 'light') applyTheme(passed);
-      else if (ctx.theme || ctx.initialTheme) applyTheme(ctx.theme || ctx.initialTheme);
-    } catch (e) { /* keep OS theme */ }
+    applyTheme(window.CP.pop.detectTheme(t));
 
     return store.load(t).then(function (state) {
       var list = state.l.filter(function (l) { return l.i === listId; })[0];

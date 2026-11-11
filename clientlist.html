@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<!-- Checklist+ popover: the board's client list. -->
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Clienti</title>
+  <link rel="stylesheet" href="./css/section.css?v=1.10.0">
+</head>
+<body class="cp-popup-body">
+  <form id="cp-clientlist" class="cp-popup" autocomplete="off" novalidate>
+    <label class="cp-popup-field">
+      <span>Clienti della bacheca, uno per riga</span>
+      <textarea id="cp-client-text" class="cp-edit-text" rows="8" maxlength="4000"></textarea>
+    </label>
+    <p class="cp-popup-info">Se il titolo di una checklist contiene uno di questi nomi, il cliente viene riconosciuto in automatico.</p>
+    <p id="cp-clientlist-saved" class="cp-popup-info" hidden></p>
+    <p id="cp-popup-error" class="cp-error" hidden></p>
+    <button type="submit" class="cp-btn cp-btn-primary cp-btn-block">Salva elenco</button>
+  </form>
+  <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  <script src="./js/people.js?v=1.10.0"></script>
+  <script src="./js/popcommon.js?v=1.10.0"></script>
+  <script src="./js/clientlist.js?v=1.10.0"></script>
+</body>
+</html>
