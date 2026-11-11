@@ -103,7 +103,7 @@
   searchEl.addEventListener('input', render);
   removeEl.addEventListener('click', function () { assign(''); });
   areasEl.addEventListener('click', function () {
-    t.popup({ title: 'Aree del team', url: './areas.html?v=1.11.0', args: { th: document.documentElement.getAttribute('data-theme') }, height: 380 });
+    t.popup({ title: 'Aree del team', url: './areas.html?v=1.12.0', args: { th: document.documentElement.getAttribute('data-theme') }, height: 380 });
   });
 
   t.render(function () {

@@ -230,7 +230,7 @@
     return popup(ctx, {
       title: DATE_TITLES[field],
       // Versioned URL: the browser never reuses a cached copy of an older release.
-      url: './dates.html?v=1.11.0',
+      url: './dates.html?v=1.12.0',
       // The popover may not receive the theme from Trello: pass ours along.
       args: { l: list.i, i: item.i, f: field, th: currentTheme },
       height: 420
@@ -241,7 +241,7 @@
   function openMembers(ctx, ev, list, item) {
     return popup(ctx, {
       title: 'Assegna',
-      url: './members.html?v=1.11.0',
+      url: './members.html?v=1.12.0',
       args: { l: list.i, i: item.i, th: currentTheme },
       height: 420
     }, ev);
@@ -290,7 +290,7 @@
   function openClient(ev, list) {
     return popup(t, {
       title: 'Cliente',
-      url: './clients.html?v=1.11.0',
+      url: './clients.html?v=1.12.0',
       args: { l: list.i, th: currentTheme },
       height: 360
     }, ev);

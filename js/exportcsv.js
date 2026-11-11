@@ -1,8 +1,8 @@
 /**
  * Checklist+ - CSV export builder (pure functions, shared by browser and tests).
  *
- * Output: a staircase of rows (card -> checklist -> task), each with the
- * worked days of its own level, and a final TOTALE row for the whole board.
+ * Output: one complete row per task (client -> card -> checklist -> task,
+ * each with its worked days), followed by summary rows.
  *
  * Format tuned for Italian Excel: ";" separator, decimal comma, dd/mm/yyyy.
  */
@@ -14,9 +14,8 @@
   var wd = isNode ? require('./workdays.js') : root.CP.workdays;
 
   var HEADER = [
-    'Card', 'Checklist', 'Task', 'Cliente', 'Assegnato a', 'Completato',
-    'Inizio', 'Deadline', 'Fine', 'Giorni lavorati', 'Scostamento (gg lavorativi)',
-    'Task completati', 'Task totali', 'Mese', 'Area'
+    'Cliente', 'Giorni cliente', 'Card', 'Giorni card', 'Checklist', 'Giorni checklist', 'Task', 'Giorni task',
+    'Assegnato a', 'Area', 'Completato', 'Inizio', 'Deadline', 'Fine', 'Scostamento (gg lavorativi)', 'Mese'
   ];
 
   /** "2026-11-09" -> "09/11/2026". */
@@ -126,10 +125,14 @@
   }
 
   /**
-   * Builds the export as a "staircase": the card name appears only on the
-   * card row (column 1), the checklist name only on its row (column 2), the
-   * task only on its row (column 3). Each row carries the worked days of its
-   * own level; a final TOTALE row sums the whole board.
+   * Builds the export as a flat table: one row per task, read left to right
+   * as Cliente -> Card -> Checklist -> Task, each followed by the worked days
+   * of that level. Every row is complete (no blank "staircase" cells), so the
+   * file can also be filtered or pivoted. Summary rows follow at the end.
+   *
+   * "Giorni card" is the card's total for the client of that row: a card can
+   * hold checklists of different clients.
+   *
    * @param {Array<{name:string, state:object}>} cards  cards with their Checklist+ state
    * @param {Object<string,string>} memberNames         member id -> full name
    * @param {Set<string>} holidays                      custom holidays
@@ -140,66 +143,80 @@
    */
   function build(cards, memberNames, holidays, months, memberAreas, onlyClient) {
     cards = filterByClient(cards, onlyClient || '');
-    memberAreas = memberAreas || {};
-    var byArea = {};   // area name -> { effort, done, total }
-    var byClient = {}; // client label -> { effort, done, total }
     cards = filterByMonths(cards, months || null);
-    var lines = [row(HEADER)];
+    memberAreas = memberAreas || {};
+
+    function half(n) { return Math.round(n * 2) / 2; }
+    function sum(items) { return half(items.reduce(function (a, it) { return a + (it.w || 0); }, 0)); }
+
+    // Group: client -> card -> checklist, keeping the board order inside each client.
+    var groups = {};      // client label -> { effort, cards: [{ name, effort, lists: [list] }] }
     var stats = { cards: 0, lists: 0, tasks: 0, effort: 0 };
+    var byArea = {};
     var doneAll = 0;
 
     cards.forEach(function (card) {
-      var lists = (card.state && card.state.l || []).filter(function (l) { return (l.x || []).length > 0; });
-      if (!lists.length) return;
-      stats.cards++;
-
-      // Card totals = aggregate of all its checklists.
-      var all = { x: [] };
-      lists.forEach(function (l) { all.x = all.x.concat(l.x); });
-      var ct = calc.checklistTotals(all, holidays);
-      doneAll += ct.done;
-      lines.push(row([card.name, '', '', '', '', '', fmtDate(ct.start), fmtDate(ct.deadline), fmtDate(ct.end),
-        num(ct.effort), num(ct.deviation), num(ct.done), num(ct.total)]));
-
-      lists.forEach(function (list) {
+      var used = false;
+      (card.state && card.state.l || []).forEach(function (list) {
+        if (!(list.x || []).length) return;
+        used = true;
         stats.lists++;
-        var lt = calc.checklistTotals(list, holidays);
-        var client = calc.resolveClient(list).value || NO_CLIENT_LABEL;
-        var cagg = byClient[client] || (byClient[client] = { effort: 0, done: 0, total: 0 });
-        cagg.effort += lt.effort; cagg.done += lt.done; cagg.total += lt.total;
-        lines.push(row(['', list.n, '', client === NO_CLIENT_LABEL ? '' : client, '', '', fmtDate(lt.start), fmtDate(lt.deadline), fmtDate(lt.end),
-          num(lt.effort), num(lt.deviation), num(lt.done), num(lt.total)]));
+        var label = calc.resolveClient(list).value || NO_CLIENT_LABEL;
+        var g = groups[label] || (groups[label] = { effort: 0, cards: [] });
+        var c = g.cards[g.cards.length - 1];
+        if (!c || c.card !== card) { c = { card: card, name: card.name, effort: 0, lists: [] }; g.cards.push(c); }
+        var e = sum(list.x);
+        c.lists.push(list);
+        c.effort = half(c.effort + e);
+        g.effort = half(g.effort + e);
+      });
+      if (used) stats.cards++;
+    });
 
-        list.x.forEach(function (item) {
-          stats.tasks++;
-          stats.effort += item.w || 0;
-          var m = calc.itemMetrics(item, holidays);
-          var area = memberAreas[item.m] || NO_AREA;
-          var agg = byArea[area] || (byArea[area] = { effort: 0, done: 0, total: 0 });
-          agg.effort += item.w || 0; agg.total++; if (item.d) agg.done++;
-          lines.push(row(['', '', item.t, '', memberNames[item.m] || '', item.d ? 'Sì' : 'No',
-            fmtDate(item.s), fmtDate(item.dl), fmtDate(item.e), num(item.w || 0), num(m.deviation), '', '', monthOf(item) === NO_MONTH ? '' : monthOf(item).slice(5, 7) + '/' + monthOf(item).slice(0, 4),
-            area === NO_AREA ? '' : area]));
+    var labels = Object.keys(groups).filter(function (k) { return k !== NO_CLIENT_LABEL; }).sort();
+    if (groups[NO_CLIENT_LABEL]) labels.push(NO_CLIENT_LABEL);
+
+    var lines = [row(HEADER)];
+    labels.forEach(function (label) {
+      var g = groups[label];
+      g.cards.forEach(function (c) {
+        c.lists.forEach(function (list) {
+          var listEffort = sum(list.x);
+          list.x.forEach(function (item) {
+            stats.tasks++;
+            stats.effort += item.w || 0;
+            if (item.d) doneAll++;
+            var m = calc.itemMetrics(item, holidays);
+            var area = memberAreas[item.m] || NO_AREA;
+            var agg = byArea[area] || (byArea[area] = { effort: 0 });
+            agg.effort += item.w || 0;
+            var month = monthOf(item);
+            lines.push(row([
+              label, num(g.effort), c.name, num(c.effort), list.n, num(listEffort), item.t, num(item.w || 0),
+              memberNames[item.m] || '', area === NO_AREA ? '' : area, item.d ? 'Sì' : 'No',
+              fmtDate(item.s), fmtDate(item.dl), fmtDate(item.e), num(m.deviation),
+              month === NO_MONTH ? '' : month.slice(5, 7) + '/' + month.slice(0, 4)
+            ]));
+          });
         });
       });
     });
 
-    stats.effort = Math.round(stats.effort * 2) / 2;
-    lines.push(row(['TOTALE', '', '', '', '', '', '', '', '', num(stats.effort), '', num(doneAll), num(stats.tasks)]));
-    // Totals per client (a checklist shared by several clients is its own group).
-    var clientNames = Object.keys(byClient).filter(function (c) { return c !== NO_CLIENT_LABEL; }).sort();
-    if (clientNames.length) {
-      if (byClient[NO_CLIENT_LABEL]) clientNames.push(NO_CLIENT_LABEL);
-      clientNames.forEach(function (c) {
-        lines.push(row([(c === NO_CLIENT_LABEL ? 'TOTALE SENZA CLIENTE' : 'TOTALE CLIENTE ' + c.toUpperCase()), '', '', '', '', '', '', '', '', num(Math.round(byClient[c].effort * 2) / 2), '', num(byClient[c].done), num(byClient[c].total)]));
+    stats.effort = half(stats.effort);
+
+    // Summary: label in the first column, days in the second.
+    lines.push('');
+    lines.push(row(['TOTALE', num(stats.effort), stats.tasks + ' task, ' + doneAll + ' completati']));
+    if (labels.length > 1 || (labels.length === 1 && labels[0] !== NO_CLIENT_LABEL)) {
+      labels.forEach(function (label) {
+        lines.push(row([label === NO_CLIENT_LABEL ? 'TOTALE SENZA CLIENTE' : 'TOTALE CLIENTE ' + label, num(groups[label].effort)]));
       });
     }
-    // Totals per work area (from each task's assignee), shown only when areas are in use.
     var areaNames = Object.keys(byArea).filter(function (a) { return a !== NO_AREA; }).sort();
     if (areaNames.length) {
       if (byArea[NO_AREA]) areaNames.push(NO_AREA);
       areaNames.forEach(function (a) {
-        lines.push(row(['TOTALE ' + a.toUpperCase(), '', '', '', '', '', '', '', '', num(Math.round(byArea[a].effort * 2) / 2), '', num(byArea[a].done), num(byArea[a].total)]));
+        lines.push(row([a === NO_AREA ? 'TOTALE SENZA AREA' : 'TOTALE AREA ' + a.toUpperCase(), num(half(byArea[a].effort))]));
       });
     }
     // BOM so Excel reads UTF-8 accents correctly; CRLF line endings.
