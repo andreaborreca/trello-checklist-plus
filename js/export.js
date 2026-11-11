@@ -84,16 +84,25 @@
 
   /** Builds the Excel workbook for the current filters and downloads it. */
   function downloadExcel() {
+    // The Excel library is a separate file: say so clearly if it did not load.
+    if (!window.ExcelJS) {
+      fail('Libreria Excel non caricata (manca vendor/exceljs.min.js sul sito). Usa il CSV oppure carica il file', null);
+      statusEl.hidden = false;
+      resize();
+      return;
+    }
     var sel = selection();
     var tree = exportcsv.collect(data, names, new Set(), sel, memberAreas, clientSelectEl.value);
     var today = window.CP.workdays.todayIso();
     excelEl.disabled = true;
-    window.CP.exportxlsx.toBuffer(tree, {
+    errorEl.hidden = true;
+    // Promise.resolve().then: a synchronous failure is reported like any other.
+    Promise.resolve().then(function () { return window.CP.exportxlsx.toBuffer(tree, {
       board: boardName,
       exportedOn: today.slice(8, 10) + '/' + today.slice(5, 7) + '/' + today.slice(0, 4),
       monthLabel: selectEl.value ? monthLabel(selectEl.value) : 'tutti',
       clientLabel: clientSelectEl.value || 'tutti'
-    }).then(function (buffer) {
+    }); }).then(function (buffer) {
       var url = URL.createObjectURL(new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
       var a = document.createElement('a');
       a.href = url;
