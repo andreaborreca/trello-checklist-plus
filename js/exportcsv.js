@@ -86,6 +86,45 @@
     });
   }
 
+  /** Single client names of a checklist (a shared checklist has several); [] = none. */
+  function clientsOf(list) {
+    var value = calc.resolveClient(list).value;
+    return value ? value.split(' + ') : [];
+  }
+
+  /** Clients present in the data, sorted, with checklist counts; "Senza cliente" last. */
+  function listClients(cards) {
+    var counts = {};
+    cards.forEach(function (card) {
+      (card.state && card.state.l || []).forEach(function (l) {
+        if (!(l.x || []).length) return;
+        var names = clientsOf(l);
+        (names.length ? names : [NO_CLIENT_LABEL]).forEach(function (n) { counts[n] = (counts[n] || 0) + 1; });
+      });
+    });
+    return Object.keys(counts).filter(function (k) { return k !== NO_CLIENT_LABEL; }).sort()
+      .concat(counts[NO_CLIENT_LABEL] ? [NO_CLIENT_LABEL] : [])
+      .map(function (k) { return { key: k, count: counts[k] }; });
+  }
+
+  /**
+   * Keeps only the checklists of one client ('' = all). A checklist shared by
+   * several clients is kept for each of them. NO_CLIENT_LABEL selects the
+   * checklists without a client.
+   */
+  function filterByClient(cards, client) {
+    if (!client) return cards;
+    return cards.map(function (card) {
+      return {
+        name: card.name,
+        state: { l: (card.state && card.state.l || []).filter(function (l) {
+          var names = clientsOf(l);
+          return client === NO_CLIENT_LABEL ? names.length === 0 : names.indexOf(client) >= 0;
+        }) }
+      };
+    });
+  }
+
   /**
    * Builds the export as a "staircase": the card name appears only on the
    * card row (column 1), the checklist name only on its row (column 2), the
@@ -96,9 +135,11 @@
    * @param {Set<string>} holidays                      custom holidays
    * @param {Set<string>|null} months                   month keys to include (null = all)
    * @param {Object<string,string>} [memberAreas]       member id -> area name (from the assignee)
+   * @param {string} [onlyClient]                       single client to include ('' = all)
    * @returns {{csv:string, stats:{cards:number, lists:number, tasks:number, effort:number}}}
    */
-  function build(cards, memberNames, holidays, months, memberAreas) {
+  function build(cards, memberNames, holidays, months, memberAreas, onlyClient) {
+    cards = filterByClient(cards, onlyClient || '');
     memberAreas = memberAreas || {};
     var byArea = {};   // area name -> { effort, done, total }
     var byClient = {}; // client label -> { effort, done, total }
@@ -165,7 +206,7 @@
     return { csv: '﻿' + lines.join('\r\n') + '\r\n', stats: stats };
   }
 
-  var api = { build: build, cell: cell, HEADER: HEADER, monthOf: monthOf, listMonths: listMonths, NO_MONTH: NO_MONTH };
+  var api = { build: build, cell: cell, HEADER: HEADER, monthOf: monthOf, listMonths: listMonths, NO_MONTH: NO_MONTH, listClients: listClients, NO_CLIENT_LABEL: NO_CLIENT_LABEL };
   if (isNode) module.exports = api;
   else { root.CP = root.CP || {}; root.CP.exportcsv = api; }
 })(typeof window !== 'undefined' ? window : this);

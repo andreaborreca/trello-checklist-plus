@@ -24,6 +24,7 @@
 
   var state = store.emptyState();
   var currentTheme = 'light';
+  var boardClients = [];   // client list of the board (for detection and the new-checklist form)
   var members = [];
   var cardId = '';
   // Custom holidays (patron saint, company days): configurable in phase 2.
@@ -229,7 +230,7 @@
     return popup(ctx, {
       title: DATE_TITLES[field],
       // Versioned URL: the browser never reuses a cached copy of an older release.
-      url: './dates.html?v=1.10.1',
+      url: './dates.html?v=1.11.0',
       // The popover may not receive the theme from Trello: pass ours along.
       args: { l: list.i, i: item.i, f: field, th: currentTheme },
       height: 420
@@ -240,7 +241,7 @@
   function openMembers(ctx, ev, list, item) {
     return popup(ctx, {
       title: 'Assegna',
-      url: './members.html?v=1.10.1',
+      url: './members.html?v=1.11.0',
       args: { l: list.i, i: item.i, th: currentTheme },
       height: 420
     }, ev);
@@ -289,7 +290,7 @@
   function openClient(ev, list) {
     return popup(t, {
       title: 'Cliente',
-      url: './clients.html?v=1.10.1',
+      url: './clients.html?v=1.11.0',
       args: { l: list.i, th: currentTheme },
       height: 360
     }, ev);
@@ -607,12 +608,22 @@
       }));
       return;
     }
+    // Client choice right in the creation form: automatic, none, or one client
+    // of the board (several clients can be set later from the client popover).
+    var clientSelect = el('select', { cls: 'cp-new-list-client', attrs: { 'aria-label': 'Cliente' } }, [
+      el('option', { text: 'Cliente: automatico dal titolo', value: '' }),
+      el('option', { text: 'Nessun cliente (attivit\u00e0 interna)', value: calc.NO_CLIENT })
+    ]);
+    boardClients.forEach(function (c) { clientSelect.appendChild(el('option', { text: c, value: c })); });
+
     var editor = inlineEditor('', 200, function (v) {
+      var chosen = clientSelect.value;
       openForm = null;
-      save(function (s) { s.l.push({ i: store.newId(), n: v, c: '', x: [] }); }).catch(function () {});
+      save(function (s) { s.l.push({ i: store.newId(), n: v, c: chosen, x: [] }); }).catch(function () {});
     }, function () { openForm = null; render(); });
     editor.querySelector('.cp-btn-primary').textContent = 'Aggiungi';
     editor.querySelector('textarea').setAttribute('placeholder', 'Titolo, es. NEXI - SVILUPPO BACKEND');
+    editor.insertBefore(clientSelect, editor.querySelector('.cp-edit-actions'));
     newListEl.appendChild(editor);
   }
 
@@ -658,7 +669,7 @@
   t.render(function () {
     return Promise.all([
       // Board client list first: it drives the automatic client detection.
-      window.CP.people.loadClients(t).then(function (c) { calc.setClients(c); return store.load(t); }),
+      window.CP.people.loadClients(t).then(function (c) { boardClients = c; calc.setClients(c); return store.load(t); }),
       t.board('members').catch(function () { return { members: [] }; }),
       t.card('id')
     ]).then(function (res) {

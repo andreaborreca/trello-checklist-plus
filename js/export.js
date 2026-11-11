@@ -20,6 +20,8 @@
   var copyEl = document.getElementById('cp-export-copy');
   var monthsEl = document.getElementById('cp-export-months');
   var selectEl = document.getElementById('cp-month-select');
+  var clientsEl = document.getElementById('cp-export-clients');
+  var clientSelectEl = document.getElementById('cp-client-select');
 
   function applyTheme(theme) {
     document.documentElement.setAttribute('data-theme', theme === 'dark' ? 'dark' : 'light');
@@ -58,17 +60,18 @@
   function fileName(sel) {
     var slug = String(boardName || 'board').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'board';
     var suffix = sel && sel.size ? Array.from(sel).sort().join('_') : window.CP.workdays.todayIso();
+    if (clientSelectEl.value) suffix = clientSelectEl.value.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '_' + suffix;
     return 'checklist-plus_' + slug + '_' + suffix + '.csv';
   }
 
   /** Rebuilds the CSV for the current month selection and refreshes the buttons. */
   function refresh() {
     var sel = selection();
-    var out = exportcsv.build(data, names, new Set(), sel, memberAreas);
+    var out = exportcsv.build(data, names, new Set(), sel, memberAreas, clientSelectEl.value);
     var has = out.stats.tasks > 0;
     statusEl.textContent = has
       ? out.stats.cards + ' card, ' + out.stats.lists + ' checklist, ' + out.stats.tasks + ' task, ' + calc.fmtNumber(out.stats.effort) + ' giorni lavorati.'
-      : (sel ? 'Nessun task nel mese selezionato.' : 'Nessuna Checklist+ con elementi su questa bacheca.');
+      : (sel || clientSelectEl.value ? 'Nessun task con i filtri selezionati.' : 'Nessuna Checklist+ con elementi su questa bacheca.');
 
     currentCsv = out.csv;
     if (blobUrl) URL.revokeObjectURL(blobUrl);
@@ -96,7 +99,21 @@
     });
   }
 
+  /** Fills the client select with the clients found in the data. */
+  function renderClients() {
+    var clients = exportcsv.listClients(data);
+    if (!clients.length) return;
+    clientsEl.hidden = false;
+    clients.forEach(function (c) {
+      var opt = document.createElement('option');
+      opt.value = c.key;
+      opt.textContent = c.key + ' (' + c.count + ' checklist)';
+      clientSelectEl.appendChild(opt);
+    });
+  }
+
   selectEl.addEventListener('change', refresh);
+  clientSelectEl.addEventListener('change', refresh);
 
   copyEl.addEventListener('click', function () {
     navigator.clipboard.writeText(currentCsv.replace(/^﻿/, '')).then(function () {
@@ -129,6 +146,7 @@
       })).then(function (withData) {
         data = withData;
         renderMonths();
+        renderClients();
         refresh();
       });
     }).catch(function (err) { fail('Impossibile leggere le card della bacheca', err); resize(); });

@@ -1,8 +1,8 @@
 /* Inter (SIL Open Font License, see fonts/OFL-LICENSE.txt): its metrics match
    the text measured in Trello's checklist. Self-hosted: no third-party requests. */
-@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.10.1") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.10.1") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.10.1") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.11.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.11.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.11.0") format("woff2"); }
 
 /* Checklist+ styles, matched to Trello's native checklist.
    Dark values are sampled from Trello's current dark theme; light values
@@ -394,3 +394,9 @@ button, input, textarea { font: inherit; color: inherit; }
 /* Popovers are opaque, in the colors of the detected theme: even if the theme
    differs from Trello's, text and background always come from the same palette. */
 html:has(> body.cp-popup-body), body.cp-popup-body { background: var(--cp-popup-bg); }
+
+.cp-new-list-client {
+  display: block; width: 100%; max-width: 320px; height: 32px; margin-top: 8px; padding: 4px 8px;
+  border: 1px solid var(--cp-checkbox-border); border-radius: 4px; background: transparent; font: inherit; color: inherit;
+}
+.cp-new-list-client option { background: var(--cp-option-bg); color: var(--cp-text); }
