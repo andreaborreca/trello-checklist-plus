@@ -427,6 +427,15 @@
    *                      onImport(ids, endFor) -> '' on success or an error message }
    */
   function importer(body, ctl, o) {
+    var available = o.natives.reduce(function (n, c) { return n + (c.checkItems || []).length; }, 0);
+    if (!available) {
+      // Trello sent the checklists without their items (or no checklists at all).
+      body.appendChild(el('p', 'cp-pop-message', o.natives.length
+        ? 'Trello ha indicato ' + o.natives.length + ' checklist native, ma non ha fornito i loro elementi al Power-Up.'
+        : 'Trello non ha fornito al Power-Up le checklist native di questa card' + (o.badgeItems ? ' (' + o.badgeItems + ' elementi secondo il badge).' : '.')));
+      body.appendChild(el('p', 'cp-popup-info', 'Per importarle serve la lettura tramite API di Trello. Segnalalo nella chat di sviluppo con questo messaggio.'));
+      return;
+    }
     body.appendChild(el('p', 'cp-popup-info', 'Le checklist scelte diventano Checklist+ con testo, stato, membro e deadline degli elementi. Su Trello non viene eliminato nulla.'));
 
     var list = el('div', 'cp-client-list cp-import-list');
@@ -440,7 +449,7 @@
       input.value = n.id;
       input.checked = !present; // a checklist with the same name is probably already imported
       label.appendChild(input);
-      label.appendChild(el('span', '', n.name + ' (' + done + '/' + items.length + ')' + (present ? ', già presente in Checklist+' : '')));
+      label.appendChild(el('span', '', n.name + ' (' + done + '/' + items.length + ')' + (present ? ', stesso nome di una Checklist+: spuntala per importarla comunque' : '')));
       list.appendChild(label);
     });
     body.appendChild(list);

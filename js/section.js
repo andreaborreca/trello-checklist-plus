@@ -36,6 +36,7 @@
   var boardClients = [];   // client list of the board (for detection and the new-checklist form)
   var members = [];
   var natives = [];        // native Trello checklists of this card (for the import)
+  var nativeBadgeCount = 0; // native checklist items according to the card badges
   // Custom holidays (patron saint, company days): configurable in a later phase.
   var holidays = new Set();
 
@@ -385,6 +386,7 @@
     panels.open(anchorOf(ev), 'Importa checklist native', function (body, ctl) {
       panelsApi.importer(body, ctl, {
         natives: natives,
+        badgeItems: nativeBadgeCount,
         existing: names,
         onImport: function (ids, endFor) {
           var chosen = natives.filter(function (n) { return ids.indexOf(n.id) >= 0; });
@@ -727,12 +729,13 @@
       attrs: { type: 'button', 'data-fkey': 'newlist' },
       on: { click: function () { setActive(a); } }
     });
-    // Only native checklists whose name is not already in Checklist+ are counted.
-    var names = state.l.map(function (l) { return calc.normalizeLabel(l.n); });
-    var toImport = natives.filter(function (n) { return names.indexOf(calc.normalizeLabel(n.name)) < 0; }).length;
-    var importBtn = toImport ? el('button', {
+    // Shown whenever the card has native checklists, also when their names are
+    // already used in Checklist+ (the panel marks them) or Trello did not send
+    // their items (the panel explains it).
+    var nativeCount = natives.length || nativeBadgeCount;
+    var importBtn = nativeCount ? el('button', {
       cls: 'cp-btn cp-btn-subtle',
-      text: 'Importa checklist native (' + toImport + ')',
+      text: 'Importa checklist native' + (natives.length ? ' (' + natives.length + ')' : ''),
       attrs: { type: 'button', title: 'Converte le checklist native di questa card in Checklist+' },
       on: { click: openImport }
     }) : null;
@@ -1001,6 +1004,35 @@
   // Write pending changes at once if the card is closed during the short wait.
   window.addEventListener('pagehide', function () { queue.flush(); });
 
+  /**
+   * Native checklists of the card. Asks for "checklists" and "badges"; when
+   * the badges count native items but the checklists arrive without them,
+   * retries with t.card('all'). Logs only the shape (no task text) so a
+   * problem on real Trello can be diagnosed from the console.
+   */
+  function loadNatives() {
+    function itemsOf(lists) { return lists.reduce(function (n, c) { return n + ((c && c.checkItems) || []).length; }, 0); }
+    return t.card('checklists', 'badges').catch(function (err) {
+      if (window.console) console.warn('[Checklist+] t.card(checklists) failed', err);
+      return {};
+    }).then(function (card) {
+      var lists = (card && card.checklists) || [];
+      nativeBadgeCount = (card && card.badges && card.badges.checkItems) || 0;
+      if (itemsOf(lists) || !nativeBadgeCount) return lists;
+      return t.card('all').then(function (all) { return (all && all.checklists) || lists; }, function () { return lists; });
+    }).then(function (lists) {
+      natives = lists.filter(function (c) { return c && c.name; });
+      if (window.console) {
+        console.info('[Checklist+] native checklists', {
+          lists: natives.length,
+          items: itemsOf(natives),
+          badgeItems: nativeBadgeCount,
+          itemFields: Object.keys((natives[0] && (natives[0].checkItems || [])[0]) || {})
+        });
+      }
+    });
+  }
+
   var started = false;
   t.render(function () {
     var firstRun = !started;
@@ -1010,13 +1042,12 @@
       people.loadClients(t).then(function (c) { boardClients = c; calc.setClients(c); }),
       t.board('members').catch(function () { return { members: [] }; }),
       people.loadAreas(t),
-      t.card('checklists').catch(function () { return { checklists: [] }; })
+      loadNatives()
     ]).then(function (res) {
       members = (res[1].members || []).slice().sort(function (a, b) {
         return String(a.fullName || '').localeCompare(String(b.fullName || ''));
       });
       teamAreas = res[2] || {};
-      natives = ((res[3] && res[3].checklists) || []).filter(function (c) { return c && (c.checkItems || []).length; });
       // The queue loads the stored state and replays changes interrupted by a reload.
       return firstRun ? queue.start() : queue.refresh();
     }).then(function (s) {
