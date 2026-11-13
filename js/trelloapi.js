@@ -57,7 +57,9 @@
     if (!isConfigured()) return Promise.reject(new Error('API key del Power-Up non configurata (js/config.js).'));
     var key = window.CP.config.appKey;
     var api;
-    return t.getRestApi().then(function (client) {
+    // The docs describe getRestApi() as returning a Promise, the real client
+    // returns the object itself: Promise.resolve handles both.
+    return Promise.resolve().then(function () { return t.getRestApi(); }).then(function (client) {
       api = client;
       return client.authorize({ scope: 'read', expiration: '1hour' });
     }).then(function (token) {
