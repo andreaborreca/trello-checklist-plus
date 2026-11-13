@@ -12,13 +12,16 @@
   var calc = window.CP.calc;
 
   // Absolute URL of the gray icon (Trello requires gray icons on the card back).
-  var ICON = new URL('./img/icon.svg?v=1.15.1', window.location.href).href;
+  var ICON = new URL('./img/icon.svg?v=1.16.0', window.location.href).href;
 
   // White variant for dark board headers.
-  var ICON_LIGHT = new URL('./img/icon-white.svg?v=1.15.1', window.location.href).href;
+  var ICON_LIGHT = new URL('./img/icon-white.svg?v=1.16.0', window.location.href).href;
 
   // Check-square icon for the overall badge (same idea as Trello's checklist badge).
-  var ICON_CHECK = new URL('./img/icon-check.svg?v=1.15.1', window.location.href).href;
+  var ICON_CHECK = new URL('./img/icon-check.svg?v=1.16.0', window.location.href).href;
+
+  // Person icon for the badge with the viewer's own open tasks.
+  var ICON_PERSON = new URL('./img/icon-person.svg?v=1.16.0', window.location.href).href;
 
   /**
    * Height the section had the last time this card was open (saved by the
@@ -54,9 +57,10 @@
           return t.popup({
             title: 'Checklist+',
             items: [
-              { text: 'Esporta...', callback: page('Esporta Checklist+', './export.html?v=1.15.1', 330) },
-              { text: 'Clienti della bacheca...', callback: page('Clienti', './clientlist.html?v=1.15.1', 340) },
-              { text: 'Aree del team...', callback: page('Aree del team', './areas.html?v=1.15.1', 380) }
+              { text: 'I miei task...', callback: page('I miei task', './mytasks.html?v=1.16.0', 480) },
+              { text: 'Esporta...',callback: page('Esporta Checklist+', './export.html?v=1.16.0', 330) },
+              { text: 'Clienti della bacheca...', callback: page('Clienti', './clientlist.html?v=1.16.0', 340) },
+              { text: 'Aree del team...', callback: page('Aree del team', './areas.html?v=1.16.0', 380) }
             ]
           });
         }
@@ -74,14 +78,15 @@
         content: {
           type: 'iframe',
           // Version in the URL so browsers never serve a stale cached page after an update.
-          url: t.signUrl('./section.html?v=1.15.1'),
+          url: t.signUrl('./section.html?v=1.16.0'),
           height: rememberedHeight(t)
         }
       };
     },
 
     /**
-     * Badges on the front of the card: the overall count first, then one per Checklist+ list
+     * Badges on the front of the card: the overall count first, then the
+     * viewer's own open tasks, then one per Checklist+ list
      * ("NAME done/total · days gg"), so the breakdown is visible without
      * opening the card. Green = all done, red = something overdue.
      * Pending lists come first; with many lists, the first six are shown
@@ -125,7 +130,20 @@
             (lists.length > MAX_LIST_BADGES ? ' (+' + (lists.length - MAX_LIST_BADGES) + ' checklist)' : ''),
           color: all.done === all.total ? 'green' : null
         };
-        return [total].concat(badges);
+        // Second badge, only for the viewer: their own open tasks on this card
+        // (red when one is overdue). Power-Ups cannot add filters to Trello's
+        // filter menu, so this marks "my" cards on the board at a glance.
+        var me = '';
+        try { me = (t.getContext() || {}).member || ''; } catch (e) { me = ''; }
+        var mine = [];
+        state.l.forEach(function (l) { l.x.forEach(function (it) { if (me && it.m === me && !it.d) mine.push(it); }); });
+        var personal = mine.length ? [{
+          icon: ICON_PERSON,
+          text: 'Tuoi: ' + mine.length,
+          color: mine.some(function (it) { return calc.dueStatus(it, today, new Set()) === 'late'; }) ? 'red' : 'blue'
+        }] : [];
+
+        return [total].concat(personal, badges);
       });
     }
   });

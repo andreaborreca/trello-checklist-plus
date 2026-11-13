@@ -418,8 +418,57 @@
     body.appendChild(button('cp-btn cp-btn-block', 'Annulla', ctl.close));
   }
 
+  /* ------------------------------------------------------------------ */
+  /* Import of native checklists                                        */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * @param {object} o  { natives, existing: normalized names already in Checklist+,
+   *                      onImport(ids, endFor) -> '' on success or an error message }
+   */
+  function importer(body, ctl, o) {
+    body.appendChild(el('p', 'cp-popup-info', 'Le checklist scelte diventano Checklist+ con testo, stato, membro e deadline degli elementi. Su Trello non viene eliminato nulla.'));
+
+    var list = el('div', 'cp-client-list cp-import-list');
+    o.natives.forEach(function (n) {
+      var items = n.checkItems || [];
+      var done = items.filter(function (ci) { return ci.state === 'complete'; }).length;
+      var present = o.existing.indexOf(calc.normalizeLabel(n.name)) >= 0;
+      var label = el('label', 'cp-export-month');
+      var input = el('input');
+      input.type = 'checkbox';
+      input.value = n.id;
+      input.checked = !present; // a checklist with the same name is probably already imported
+      label.appendChild(input);
+      label.appendChild(el('span', '', n.name + ' (' + done + '/' + items.length + ')' + (present ? ', già presente in Checklist+' : '')));
+      list.appendChild(label);
+    });
+    body.appendChild(list);
+
+    var field = el('label', 'cp-popup-field');
+    field.appendChild(el('span', '', 'Data di fine degli elementi già completati'));
+    var select = el('select');
+    [['empty', 'Vuota, la compilo io'], ['deadline', 'Uguale alla deadline'], ['today', 'Oggi']].forEach(function (p) {
+      var opt = el('option', '', p[1]);
+      opt.value = p[0];
+      select.appendChild(opt);
+    });
+    field.appendChild(select);
+    body.appendChild(field);
+    body.appendChild(el('p', 'cp-popup-info', 'Trello non indica quando un elemento è stato spuntato. Da qui in poi, la spunta in Checklist+ imposta la data di fine a oggi.'));
+
+    var error = el('p', 'cp-error');
+    error.hidden = true;
+    body.appendChild(error);
+    body.appendChild(button('cp-btn cp-btn-primary cp-btn-block', 'Importa', function () {
+      var ids = Array.prototype.map.call(list.querySelectorAll('input:checked'), function (i) { return i.value; });
+      var msg = ids.length ? o.onImport(ids, select.value) : 'Seleziona almeno una checklist.';
+      if (msg) { error.textContent = msg; error.hidden = false; ctl.reflow(); }
+    }));
+  }
+
   window.CP.panels = {
     create: create, calendar: calendar, memberPicker: memberPicker,
-    clientPicker: clientPicker, menu: menu, confirm: confirm
+    clientPicker: clientPicker, menu: menu, confirm: confirm, importer: importer
   };
 })();

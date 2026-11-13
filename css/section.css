@@ -1,8 +1,8 @@
 /* Inter (SIL Open Font License, see fonts/OFL-LICENSE.txt): its metrics match
    the text measured in Trello's checklist. Self-hosted: no third-party requests. */
-@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.15.1") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.15.1") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.15.1") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.16.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.16.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.16.0") format("woff2"); }
 
 /* Checklist+ styles, matched to Trello's native checklist.
    Dark values are sampled from Trello's current dark theme; light values
@@ -443,7 +443,67 @@ html:has(> body.cp-popup-body), body.cp-popup-body { background: var(--cp-popup-
 .cp-collapse:hover { background: var(--cp-hover); }
 
 /* The card section never shows its own scrollbar: Trello sizes the frame to
-   the content. Only when the content exceeds Trello's maximum height (1500px)
-   the section scrolls inside (class set by section.js). */
+   the content. When the content exceeds Trello's maximum height (1500px)
+   the section still scrolls with the wheel, but the scrollbar stays hidden
+   and a fade at the bottom shows that there is more (classes set by section.js). */
 html.cp-section, html.cp-section body { overflow: hidden; }
-html.cp-section.is-tall { overflow-y: auto; }
+html.cp-section.is-tall { overflow-y: auto; scrollbar-width: none; }
+html.cp-section.is-tall::-webkit-scrollbar { display: none; width: 0; height: 0; }
+html.cp-section.has-more body::after {
+  content: ""; position: fixed; left: 0; right: 0; bottom: 0; height: 40px; pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--cp-fade));
+}
+:root { --cp-fade: rgba(255, 255, 255, 0.95); }
+:root[data-theme="dark"] { --cp-fade: rgba(31, 31, 33, 0.95); }
+
+/* ---------- Drag and drop ---------- */
+
+.cp-item-text, .cp-list-title { touch-action: manipulation; }
+html.is-dragging, html.is-dragging * { cursor: grabbing !important; user-select: none; }
+.cp-item.is-dragging, .cp-list.is-dragging { opacity: 0.35; }
+.cp-ghost {
+  position: absolute; z-index: 20; pointer-events: none; opacity: 0.92;
+  background: var(--cp-popup-bg); border-radius: 8px; padding: 0 4px;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3), 0 0 1px rgba(0, 0, 0, 0.4);
+}
+.cp-drop-line { position: absolute; z-index: 19; height: 2px; border-radius: 1px; background: var(--cp-primary); pointer-events: none; }
+.cp-drop-line[hidden] { display: none; }
+
+/* ---------- Task opened from "I miei task" ---------- */
+
+.cp-item.is-flash { animation: cp-flash 2.6s ease-out; border-radius: 6px; }
+@keyframes cp-flash {
+  0%, 35% { background: var(--cp-selected); box-shadow: 0 0 0 2px var(--cp-primary); }
+  100% { background: transparent; box-shadow: 0 0 0 2px transparent; }
+}
+
+/* ---------- Notices and new checklist bar ---------- */
+
+.cp-notice {
+  display: flex; align-items: flex-start; gap: 8px; margin: 0 0 12px; padding: 6px 4px 6px 10px;
+  border-radius: 4px; background: var(--cp-selected); color: var(--cp-text); font-size: 13px;
+}
+.cp-notice span { flex: 1 1 auto; padding-top: 4px; }
+.cp-new-list-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+.cp-import-list { margin-left: 0; max-height: 220px; }
+
+/* ---------- "I miei task" popover ---------- */
+
+.cp-mt-card { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 4px; }
+.cp-mt-card-name { flex: 1 1 auto; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-mt-card-col { flex: none; font-size: 11px; color: var(--cp-text-subtlest); max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-mt-row {
+  display: flex; align-items: flex-start; gap: 8px; width: 100%; padding: 6px; border: 0; border-radius: 4px;
+  background: transparent; text-align: left; cursor: pointer;
+}
+.cp-mt-row:hover { background: var(--cp-hover); }
+.cp-mt-state {
+  flex: none; width: 16px; height: 16px; margin-top: 2px; border: 1px solid var(--cp-checkbox-border); border-radius: 2px;
+  font-size: 11px; line-height: 14px; text-align: center; color: var(--cp-on-primary);
+}
+.cp-mt-row.is-done .cp-mt-state { background: var(--cp-primary); border-color: var(--cp-primary); }
+.cp-mt-row.is-done .cp-mt-task { text-decoration: line-through; color: var(--cp-text-subtle); }
+.cp-mt-text { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.cp-mt-task { word-break: break-word; }
+.cp-mt-list { font-size: 11px; color: var(--cp-text-subtlest); }
+.cp-mt-row .cp-due { flex: none; cursor: inherit; }
