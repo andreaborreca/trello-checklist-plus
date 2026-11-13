@@ -433,7 +433,29 @@
       body.appendChild(el('p', 'cp-pop-message', o.natives.length
         ? 'Trello ha indicato ' + o.natives.length + ' checklist native, ma non ha fornito i loro elementi al Power-Up.'
         : 'Trello non ha fornito al Power-Up le checklist native di questa card' + (o.badgeItems ? ' (' + o.badgeItems + ' elementi secondo il badge).' : '.')));
-      body.appendChild(el('p', 'cp-popup-info', 'Per importarle serve la lettura tramite API di Trello. Segnalalo nella chat di sviluppo con questo messaggio.'));
+      if (!o.canFetch) {
+        body.appendChild(el('p', 'cp-popup-info', 'Per importarle serve la lettura tramite API di Trello: manca la API key del Power-Up in js/config.js.'));
+        return;
+      }
+      body.appendChild(el('p', 'cp-popup-info', 'Si possono leggere con l\'API di Trello: si apre la finestra di autorizzazione di Trello, con accesso in sola lettura che scade dopo un\'ora. L\'autorizzazione viene eliminata subito dopo la lettura.'));
+      var fetchError = el('p', 'cp-error');
+      fetchError.hidden = true;
+      var fetchBtn = button('cp-btn cp-btn-primary cp-btn-block', 'Autorizza e leggi da Trello', function () {
+        fetchBtn.disabled = true;
+        fetchBtn.textContent = 'Lettura in corso...';
+        fetchError.hidden = true;
+        o.onFetch().catch(function (err) {
+          fetchBtn.disabled = false;
+          fetchBtn.textContent = 'Autorizza e leggi da Trello';
+          var denied = err && /denied|deny|negat/i.test(String(err.name || '') + String(err.message || ''));
+          fetchError.textContent = denied ? 'Autorizzazione annullata.' : 'Lettura non riuscita' + (err && err.message ? ': ' + err.message : '') + '.';
+          fetchError.hidden = false;
+          ctl.reflow();
+          if (window.console) console.error('[Checklist+]', err);
+        });
+      });
+      body.appendChild(fetchError);
+      body.appendChild(fetchBtn);
       return;
     }
     body.appendChild(el('p', 'cp-popup-info', 'Le checklist scelte diventano Checklist+ con testo, stato, membro e deadline degli elementi. Su Trello non viene eliminato nulla.'));
@@ -457,14 +479,16 @@
     var field = el('label', 'cp-popup-field');
     field.appendChild(el('span', '', 'Data di fine degli elementi già completati'));
     var select = el('select');
-    [['empty', 'Vuota, la compilo io'], ['deadline', 'Uguale alla deadline'], ['today', 'Oggi']].forEach(function (p) {
+    var options = [['empty', 'Vuota, la compilo io'], ['deadline', 'Uguale alla deadline'], ['today', 'Oggi']];
+    if (o.fromApi) options.unshift(['checked', 'Data in cui è stato spuntato (da Trello)']);
+    options.forEach(function (p) {
       var opt = el('option', '', p[1]);
       opt.value = p[0];
       select.appendChild(opt);
     });
     field.appendChild(select);
     body.appendChild(field);
-    body.appendChild(el('p', 'cp-popup-info', 'Trello non indica quando un elemento è stato spuntato. Da qui in poi, la spunta in Checklist+ imposta la data di fine a oggi.'));
+    body.appendChild(el('p', 'cp-popup-info', (o.fromApi ? 'La data della spunta viene dalla cronologia della card; se manca, la fine resta vuota.' : 'Trello non indica al Power-Up quando un elemento è stato spuntato.') + ' Da qui in poi, la spunta in Checklist+ imposta la data di fine a oggi.'));
 
     var error = el('p', 'cp-error');
     error.hidden = true;

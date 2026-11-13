@@ -12,16 +12,16 @@
   var calc = window.CP.calc;
 
   // Absolute URL of the gray icon (Trello requires gray icons on the card back).
-  var ICON = new URL('./img/icon.svg?v=1.16.1', window.location.href).href;
+  var ICON = new URL('./img/icon.svg?v=1.17.0', window.location.href).href;
 
   // White variant for dark board headers.
-  var ICON_LIGHT = new URL('./img/icon-white.svg?v=1.16.1', window.location.href).href;
+  var ICON_LIGHT = new URL('./img/icon-white.svg?v=1.17.0', window.location.href).href;
 
   // Check-square icon for the overall badge (same idea as Trello's checklist badge).
-  var ICON_CHECK = new URL('./img/icon-check.svg?v=1.16.1', window.location.href).href;
+  var ICON_CHECK = new URL('./img/icon-check.svg?v=1.17.0', window.location.href).href;
 
   // Person icon for the badge with the viewer's own open tasks.
-  var ICON_PERSON = new URL('./img/icon-person.svg?v=1.16.1', window.location.href).href;
+  var ICON_PERSON = new URL('./img/icon-person.svg?v=1.17.0', window.location.href).href;
 
   /**
    * Height the section had the last time this card was open (saved by the
@@ -57,10 +57,10 @@
           return t.popup({
             title: 'Checklist+',
             items: [
-              { text: 'I miei task...', callback: page('I miei task', './mytasks.html?v=1.16.1', 480) },
-              { text: 'Esporta...',callback: page('Esporta Checklist+', './export.html?v=1.16.1', 330) },
-              { text: 'Clienti della bacheca...', callback: page('Clienti', './clientlist.html?v=1.16.1', 340) },
-              { text: 'Aree del team...', callback: page('Aree del team', './areas.html?v=1.16.1', 380) }
+              { text: 'I miei task...', callback: page('I miei task', './mytasks.html?v=1.17.0', 480) },
+              { text: 'Esporta...',callback: page('Esporta Checklist+', './export.html?v=1.17.0', 330) },
+              { text: 'Clienti della bacheca...', callback: page('Clienti', './clientlist.html?v=1.17.0', 340) },
+              { text: 'Aree del team...', callback: page('Aree del team', './areas.html?v=1.17.0', 380) }
             ]
           });
         }
@@ -78,7 +78,7 @@
         content: {
           type: 'iframe',
           // Version in the URL so browsers never serve a stale cached page after an update.
-          url: t.signUrl('./section.html?v=1.16.1'),
+          url: t.signUrl('./section.html?v=1.17.0'),
           height: rememberedHeight(t)
         }
       };

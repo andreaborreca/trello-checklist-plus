@@ -20,7 +20,9 @@
 (function () {
   'use strict';
 
-  var t = TrelloPowerUp.iframe();
+  // The app key enables t.getRestApi(), used only to import native checklists.
+  var cfg = window.CP.config || {};
+  var t = cfg.appKey ? TrelloPowerUp.iframe({ appKey: cfg.appKey, appName: cfg.appName }) : TrelloPowerUp.iframe();
   var store = window.CP.store;
   var calc = window.CP.calc;
   var wd = window.CP.workdays;
@@ -37,6 +39,7 @@
   var members = [];
   var natives = [];        // native Trello checklists of this card (for the import)
   var nativeBadgeCount = 0; // native checklist items according to the card badges
+  var nativesFromApi = false; // items read through the REST API (with completion dates)
   // Custom holidays (patron saint, company days): configurable in a later phase.
   var holidays = new Set();
 
@@ -387,6 +390,15 @@
       panelsApi.importer(body, ctl, {
         natives: natives,
         badgeItems: nativeBadgeCount,
+        canFetch: window.CP.trelloapi.isConfigured(),
+        fromApi: nativesFromApi,
+        onFetch: function () {
+          return window.CP.trelloapi.readNativeChecklists(t, cardId).then(function (lists) {
+            natives = lists.filter(function (c) { return c && c.name; });
+            nativesFromApi = true;
+            openImport(null); // reopen the panel, now with the items
+          });
+        },
         existing: names,
         onImport: function (ids, endFor) {
           var chosen = natives.filter(function (n) { return ids.indexOf(n.id) >= 0; });
@@ -1021,6 +1033,7 @@
       if (itemsOf(lists) || !nativeBadgeCount) return lists;
       return t.card('all').then(function (all) { return (all && all.checklists) || lists; }, function () { return lists; });
     }).then(function (lists) {
+      if (nativesFromApi) return; // keep the complete data read through the API
       natives = lists.filter(function (c) { return c && c.name; });
       if (window.console) {
         console.info('[Checklist+] native checklists', {

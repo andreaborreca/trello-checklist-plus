@@ -267,9 +267,9 @@
   /**
    * Converts native checklists (t.card('checklists')) into Checklist+ lists.
    * @param {Array} natives       checklists as returned by Trello
-   * @param {object} opts         { newId(), endFor: 'empty'|'today'|'deadline', today }
-   * Completed items get an end date only when asked: Trello does not expose
-   * when an item was checked, so the default leaves it empty (to fill in).
+   * @param {object} opts         { newId(), endFor: 'checked'|'empty'|'today'|'deadline', today }
+   * 'checked' uses ci.completedAt, the date read from the card's actions
+   * through the REST API; without it the end date stays empty (to fill in).
    */
   function convertNative(natives, opts) {
     return (natives || []).slice().sort(byPos).map(function (cl) {
@@ -279,6 +279,7 @@
         var end = '';
         if (done && opts.endFor === 'today') end = opts.today;
         if (done && opts.endFor === 'deadline') end = dl;
+        if (done && opts.endFor === 'checked') end = localDate(ci.completedAt);
         return {
           i: opts.newId(), t: String(ci.name || '').slice(0, 500), d: done,
           m: MEMBER_RE.test(ci.idMember) ? ci.idMember : '',
