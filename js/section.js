@@ -264,7 +264,7 @@
   });
 
   /** Applies a change immediately on screen and queues it for saving. */
-  function apply(op) {
+  function apply(op, waitMs) {
     showError('');
     var next = store.sanitize(ops.apply(JSON.parse(JSON.stringify(state)), op));
     var size = store.sizeOf(next);
@@ -272,7 +272,7 @@
       reportError(new store.SizeError(size));
       return false;
     }
-    queue.push(op);
+    queue.push(op, waitMs);
     return true;
   }
 
@@ -477,18 +477,66 @@
   var avatarUrl = people.avatarUrl;
   var avatarColor = people.avatarColor;
 
-  /** Worked days in the meta line: "Lavorati 1 gg" with -/+ shown on hover. */
+  // A burst of +/- clicks is saved 1.5 s after the last click, in one write.
+  var EFFORT_WAIT_MS = 1500;
+
+  /** Parses "1,5" / "1.5" / "2" into half days; null when not a number. */
+  function parseDays(text) {
+    var n = parseFloat(String(text).replace(',', '.').trim());
+    if (!isFinite(n) || n < 0) return null;
+    return Math.min(999, Math.round(n * 2) / 2);
+  }
+
+  /**
+   * Worked days: "Lavorati [-] 1,5 [+] gg". The value has a fixed width so the
+   * buttons never move, and it can be typed directly (Enter or click outside
+   * to save, Esc to cancel). The buttons always read the current value, so
+   * quick clicks add up.
+   */
   function effortField(item) {
-    function step(delta) {
-      var w = (item.w || 0) + delta;
-      if (w < 0) return;
-      apply({ k: 'effort', i: item.i, w: w, today: wd.todayIso() });
+    function current() {
+      var hit = ops.locate(state, item.i);
+      return hit ? hit.item.w || 0 : 0;
     }
+    function save(w) {
+      if (w === null || w === current()) return false;
+      apply({ k: 'effort', i: item.i, w: w, today: wd.todayIso() }, EFFORT_WAIT_MS);
+      return true;
+    }
+    function step(delta) {
+      var w = current() + delta;
+      if (w >= 0) save(w);
+    }
+
+    var input = el('input', {
+      cls: 'cp-effort-input',
+      value: calc.fmtNumber(item.w || 0),
+      attrs: {
+        type: 'text', inputmode: 'decimal', maxlength: '5', autocomplete: 'off',
+        'aria-label': 'Giorni lavorati', title: 'Scrivi i giorni (es. 1,5) e premi Invio',
+        'data-fkey': 'effort:' + item.i
+      },
+      on: {
+        focus: function () { input.select(); },
+        keydown: function (ev) {
+          if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+          if (ev.key === 'Escape') { ev.preventDefault(); input.value = calc.fmtNumber(current()); input.blur(); }
+          if (ev.key === 'ArrowUp' || ev.key === 'ArrowDown') { ev.preventDefault(); step(ev.key === 'ArrowUp' ? 0.5 : -0.5); }
+        },
+        change: function () {
+          var w = parseDays(input.value);
+          if (w === null) { input.value = calc.fmtNumber(current()); return; }
+          if (!save(w)) input.value = calc.fmtNumber(current());
+        }
+      }
+    });
+
     return el('span', { cls: 'cp-meta cp-effort' }, [
       el('span', { cls: 'cp-meta-label', text: 'Lavorati' }),
-      el('span', { cls: 'cp-meta-value', text: calc.fmtNumber(item.w || 0) + ' gg', attrs: { 'aria-live': 'polite' } }),
       el('button', { cls: 'cp-step', text: '−', attrs: { type: 'button', title: 'Togli mezza giornata', 'aria-label': 'Togli mezza giornata', 'data-fkey': 'minus:' + item.i }, on: { click: function () { step(-0.5); } } }),
-      el('button', { cls: 'cp-step', text: '+', attrs: { type: 'button', title: 'Aggiungi mezza giornata', 'aria-label': 'Aggiungi mezza giornata', 'data-fkey': 'plus:' + item.i }, on: { click: function () { step(0.5); } } })
+      input,
+      el('button', { cls: 'cp-step', text: '+', attrs: { type: 'button', title: 'Aggiungi mezza giornata', 'aria-label': 'Aggiungi mezza giornata', 'data-fkey': 'plus:' + item.i }, on: { click: function () { step(0.5); } } }),
+      el('span', { cls: 'cp-meta-label', text: 'gg' })
     ]);
   }
 
@@ -503,14 +551,16 @@
         el('span', { cls: 'cp-meta-value' + (iso ? '' : ' is-empty'), text: iso ? calc.fmtChipDate(iso) : '—' })
       ]);
     }
-    var nodes = [field('Inizio', item.s, 's'), field('Fine', item.e, 'e')];
-    if (metrics.deviation !== null) {
-      nodes.push(el('span', {
-        cls: 'cp-meta cp-deviation ' + (metrics.deviation > 0 ? 'is-late' : 'is-done'),
-        text: calc.fmtDeviation(metrics.deviation)
-      }));
-    }
-    return nodes;
+    return [field('Inizio', item.s, 's'), field('Fine', item.e, 'e')];
+  }
+
+  /** Deviation, after the worked days so that it never moves the +/- buttons. */
+  function metaDeviation(metrics) {
+    if (metrics.deviation === null) return null;
+    return el('span', {
+      cls: 'cp-meta cp-deviation ' + (metrics.deviation > 0 ? 'is-late' : 'is-done'),
+      text: calc.fmtDeviation(metrics.deviation)
+    });
   }
 
   function deadlineChip(item) {
@@ -597,6 +647,7 @@
 
     var meta = el('div', { cls: 'cp-item-meta' }, metaDates(item, metrics).concat([
       effortField(item),
+      metaDeviation(metrics),
       metrics.warnings.length
         ? el('span', { cls: 'cp-meta cp-warn', text: '! da verificare', attrs: { title: metrics.warnings.join('\n') } })
         : null

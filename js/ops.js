@@ -181,13 +181,18 @@
       });
     }
 
-    /** Adds an op; returns the new optimistic state. */
-    function push(op) {
+    /**
+     * Adds an op; returns the new optimistic state.
+     * waitMs: optional longer wait before writing (e.g. a burst of +/- clicks),
+     * because Trello reloads the section after every write and clicks made
+     * during the reload are lost.
+     */
+    function push(op, waitMs) {
       var key = coalesceKey(op);
       if (key) pending = pending.filter(function (e) { return coalesceKey(e.op) !== key; });
       pending.push({ seq: ++seq, op: op, at: Date.now(), n: 0 });
       persist();
-      arm();
+      arm(waitMs);
       var s = optimistic();
       if (o.onChange) o.onChange(s, base);
       return s;

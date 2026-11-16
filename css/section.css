@@ -1,8 +1,8 @@
 /* Inter (SIL Open Font License, see fonts/OFL-LICENSE.txt): its metrics match
    the text measured in Trello's checklist. Self-hosted: no third-party requests. */
-@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.17.1") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.17.1") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.17.1") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.17.2") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.17.2") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.17.2") format("woff2"); }
 
 /* Checklist+ styles, matched to Trello's native checklist.
    Dark values are sampled from Trello's current dark theme; light values
@@ -261,6 +261,9 @@ button, input, textarea { font: inherit; color: inherit; }
 .cp-meta-value.is-empty { font-weight: 400; color: var(--cp-text-subtlest); }
 .cp-meta-link { border: 0; background: transparent; padding: 0; cursor: pointer; font-size: inherit; line-height: inherit; }
 .cp-meta-link:hover .cp-meta-value { text-decoration: underline; }
+/* Fixed width for dates: "—" and "16 nov" take the same space, so the
+   worked-days buttons do not move when the start date is filled in. */
+.cp-meta-link .cp-meta-value { display: inline-block; min-width: 4.4em; text-align: left; font-variant-numeric: tabular-nums; }
 
 .cp-deviation { font-weight: 600; }
 .cp-deviation.is-done { color: var(--cp-green-text); }
@@ -279,9 +282,18 @@ button, input, textarea { font: inherit; color: inherit; }
   cursor: pointer;
 }
 .cp-step:hover { background: var(--cp-hover); color: var(--cp-text); }
+.cp-effort { gap: 2px; }
+.cp-effort .cp-meta-label:first-child { margin-right: 2px; }
+.cp-effort .cp-meta-label:last-child { margin-left: 2px; }
+/* Fixed width: "0", "1,5" and "12,5" take the same space, so +/- never move. */
+.cp-effort-input {
+  width: 4.2ch; height: 18px; padding: 0 2px; border: 1px solid transparent; border-radius: 3px;
+  background: transparent; color: var(--cp-text-subtle); font: inherit; font-weight: 600; text-align: center;
+}
+.cp-effort-input:hover { border-color: var(--cp-border, var(--cp-checkbox-border)); }
+.cp-effort-input:focus { outline: none; border-color: var(--cp-primary); background: var(--cp-input-bg, transparent); color: var(--cp-text); }
 
 /* Secondary controls appear on hover/focus without shifting the layout. */
-.cp-item:not(:hover):not(:focus-within) .cp-step,
 .cp-item:not(:hover):not(:focus-within) .cp-avatar.is-empty,
 .cp-item:not(:hover):not(:focus-within) .cp-due.is-empty { visibility: hidden; }
 
