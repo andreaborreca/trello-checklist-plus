@@ -1,8 +1,8 @@
 /* Inter (SIL Open Font License, see fonts/OFL-LICENSE.txt): its metrics match
    the text measured in Trello's checklist. Self-hosted: no third-party requests. */
-@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.17.2") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.17.2") format("woff2"); }
-@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.17.2") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 400; font-display: swap; src: url("../fonts/inter-latin-400-normal.woff2?v=1.18.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 500; font-display: swap; src: url("../fonts/inter-latin-500-normal.woff2?v=1.18.0") format("woff2"); }
+@font-face { font-family: "CP Inter"; font-weight: 600; font-display: swap; src: url("../fonts/inter-latin-600-normal.woff2?v=1.18.0") format("woff2"); }
 
 /* Checklist+ styles, matched to Trello's native checklist.
    Dark values are sampled from Trello's current dark theme; light values
@@ -34,6 +34,9 @@
   --cp-red-text: #ae2e24;
   --cp-yellow-text: #7f5f01;
   --cp-error-bg: #ffeceb;
+  --cp-blue-text: #1558bc;
+  --cp-teal-text: #206a83;
+  --cp-purple-text: #803fa5;
 }
 
 :root[data-theme="dark"] {
@@ -56,6 +59,9 @@
   --cp-red-text: #f87168;
   --cp-yellow-text: #f5cd47;
   --cp-error-bg: #42221f;
+  --cp-blue-text: #669df1;
+  --cp-teal-text: #6cc3e0;
+  --cp-purple-text: #c97cf4;
 }
 
 * { box-sizing: border-box; }
@@ -261,6 +267,21 @@ button, input, textarea { font: inherit; color: inherit; }
 .cp-meta-value.is-empty { font-weight: 400; color: var(--cp-text-subtlest); }
 .cp-meta-link { border: 0; background: transparent; padding: 0; cursor: pointer; font-size: inherit; line-height: inherit; }
 .cp-meta-link:hover .cp-meta-value { text-decoration: underline; }
+
+/* Start, end and worked days: own color and icon (not color alone), so the
+   three fields are told apart at a glance. Icons are fixed SVG masks. */
+.is-start > .cp-meta-label:first-child { color: var(--cp-blue-text); }
+.is-end > .cp-meta-label:first-child { color: var(--cp-teal-text); }
+.is-effort > .cp-meta-label { color: var(--cp-purple-text); }
+.is-start > .cp-meta-label:first-child::before,
+.is-end > .cp-meta-label:first-child::before,
+.is-effort > .cp-meta-label:first-child::before {
+  content: ""; display: inline-block; width: 11px; height: 11px; margin-right: 3px; vertical-align: -1px;
+  background: currentColor; -webkit-mask: var(--cp-ico) center / contain no-repeat; mask: var(--cp-ico) center / contain no-repeat;
+}
+.is-start { --cp-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 1.5v9l7-4.5z'/%3E%3C/svg%3E"); }
+.is-end { --cp-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 1h1.2v10H2.5zM4.5 1.5h6l-1.6 2.5 1.6 2.5h-6z'/%3E%3C/svg%3E"); }
+.is-effort { --cp-ico: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 1h6v1.2H8.2v1.3c0 1-.6 1.8-1.5 2.5.9.7 1.5 1.5 1.5 2.5v1.3H9V11H3V9.8h.8V8.5c0-1 .6-1.8 1.5-2.5-.9-.7-1.5-1.5-1.5-2.5V2.2H3z'/%3E%3C/svg%3E"); }
 /* Fixed width for dates: "—" and "16 nov" take the same space, so the
    worked-days buttons do not move when the start date is filled in. */
 .cp-meta-link .cp-meta-value { display: inline-block; min-width: 4.4em; text-align: left; font-variant-numeric: tabular-nums; }

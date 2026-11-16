@@ -135,9 +135,28 @@
   }
 
   // Collapsed checklists and hidden completed items: personal, this browser only.
+  // Checklists completed at 100% are collapsed automatically, to keep the
+  // section under Trello's 1500px limit. One expanded by hand stays expanded
+  // until it becomes complete again after a change.
   function collapsedKey() { return 'cp-collapsed-' + cardId; }
-  function isCollapsed(listId) { return readLocal(collapsedKey(), []).indexOf(listId) >= 0; }
-  function toggleCollapsed(listId) { toggleIn(collapsedKey(), listId); render(); }
+  function expandedKey() { return 'cp-expanded-' + cardId; }
+  function isComplete(list) { return list.x.length > 0 && list.x.every(function (it) { return it.d; }); }
+  function isCollapsed(list) {
+    if (readLocal(collapsedKey(), []).indexOf(list.i) >= 0) return true;
+    return isComplete(list) && readLocal(expandedKey(), []).indexOf(list.i) < 0;
+  }
+  function toggleCollapsed(list) {
+    var collapse = !isCollapsed(list);
+    toggleIn(collapsedKey(), list.i, collapse && !isComplete(list));
+    toggleIn(expandedKey(), list.i, !collapse && isComplete(list));
+    render();
+  }
+  var wasComplete = {}; // list id -> completeness at the previous render
+  function trackCompletion(list) {
+    var now = isComplete(list);
+    if (now && wasComplete[list.i] === false) toggleIn(expandedKey(), list.i, false); // just completed: collapse
+    wasComplete[list.i] = now;
+  }
 
   function hiddenKey() { return 'cp-hide-done-' + cardId; }
   function isHidingDone(listId) { return readLocal(hiddenKey(), []).indexOf(listId) >= 0 && !forceShow[listId]; }
@@ -531,7 +550,7 @@
       }
     });
 
-    return el('span', { cls: 'cp-meta cp-effort' }, [
+    return el('span', { cls: 'cp-meta cp-effort is-effort' }, [
       el('span', { cls: 'cp-meta-label', text: 'Lavorati' }),
       el('button', { cls: 'cp-step', text: '−', attrs: { type: 'button', title: 'Togli mezza giornata', 'aria-label': 'Togli mezza giornata', 'data-fkey': 'minus:' + item.i }, on: { click: function () { step(-0.5); } } }),
       input,
@@ -543,7 +562,7 @@
   function metaDates(item, metrics) {
     function field(label, iso, key) {
       return el('button', {
-        cls: 'cp-meta cp-meta-link',
+        cls: 'cp-meta cp-meta-link ' + (key === 's' ? 'is-start' : 'is-end'),
         attrs: { type: 'button', title: 'Modifica: ' + label.toLowerCase() },
         on: { click: function (ev) { openDates(ev, item, key); } }
       }, [
@@ -674,7 +693,8 @@
     var hiding = isHidingDone(list.i);
     var pct = tot.total ? Math.round((tot.done / tot.total) * 100) : 0;
     var client = calc.resolveClient(list);
-    var collapsed = isCollapsed(list.i);
+    trackCompletion(list);
+    var collapsed = isCollapsed(list);
 
     var summaryTip = [];
     if (tot.start) summaryTip.push('Inizio ' + calc.fmtShortDate(tot.start));
@@ -718,7 +738,7 @@
     var collapseBtn = el('button', {
       cls: 'cp-collapse',
       attrs: { type: 'button', title: collapsed ? 'Espandi la checklist' : 'Comprimi la checklist', 'aria-label': collapsed ? 'Espandi la checklist' : 'Comprimi la checklist', 'aria-expanded': String(!collapsed) },
-      on: { click: function () { toggleCollapsed(list.i); } }
+      on: { click: function () { toggleCollapsed(list); } }
     }, [icon(collapsed ? 'chevronRight' : 'chevronDown')]);
 
     var head = el('div', { cls: 'cp-list-head' }, [collapseBtn, titleNode, headerRight]);
@@ -889,6 +909,7 @@
     var hit = ops.locate(state, itemId);
     if (!hit) return;
     toggleIn(collapsedKey(), hit.list.i, false); // expand its checklist
+    toggleIn(expandedKey(), hit.list.i, true);  // also when it is complete
     forceShow[hit.list.i] = true;                // show it even if completed items are hidden
     flashItem = itemId;
   }
