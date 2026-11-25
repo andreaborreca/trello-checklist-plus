@@ -286,7 +286,7 @@
   /** Applies a change immediately on screen and queues it for saving. */
   function apply(op, waitMs) {
     showError('');
-    var next = store.sanitize(ops.apply(JSON.parse(JSON.stringify(state)), op));
+    var next = store.prune(store.sanitize(ops.apply(JSON.parse(JSON.stringify(state)), op)));
     var size = store.sizeOf(next);
     if (size > store.SAFE_LIMIT && size > store.sizeOf(state)) {
       reportError(new store.SizeError(size));
@@ -563,24 +563,56 @@
 
   function pad2(n) { return String(n).padStart(2, '0'); }
 
-  /**
-   * Last worked-days change, short ("oggi 11:40", "ieri 9:05", "24 nov"),
-   * with who and the previous value in the tooltip.
-   */
-  function effortWhen(item) {
-    if (!item.wa) return null;
-    var d = new Date(item.wa * 60000);
+  function memberName(id) {
+    if (id && id === context.member) return 'te';
+    var m = members.filter(function (x) { return x.id === id; })[0];
+    return m ? (m.fullName || m.username) : (id ? 'un membro non più in bacheca' : 'sconosciuto');
+  }
+
+  function fmtWhen(at) {
+    var d = new Date(at * 60000);
     var day = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
-    var today = wd.todayIso();
     var y = new Date(); y.setDate(y.getDate() - 1);
     var yesterday = y.getFullYear() + '-' + pad2(y.getMonth() + 1) + '-' + pad2(y.getDate());
     var time = d.getHours() + ':' + pad2(d.getMinutes());
-    var short = day === today ? 'oggi ' + time : day === yesterday ? 'ieri ' + time : calc.fmtChipDate(day);
-    var member = members.filter(function (m) { return m.id === item.wb; })[0];
-    var who = item.wb && item.wb === context.member ? 'te' : member ? (member.fullName || member.username) : '';
-    var tip = 'Giorni lavorati modificati il ' + pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() + ' alle ' + time +
-      (who ? ' da ' + who : '') + ': da ' + calc.fmtNumber(item.wp || 0) + ' a ' + calc.fmtNumber(item.w || 0) + ' gg';
-    return el('span', { cls: 'cp-effort-when', text: 'agg. ' + short, attrs: { title: tip } });
+    return {
+      short: day === wd.todayIso() ? 'oggi ' + time : day === yesterday ? 'ieri ' + time : calc.fmtChipDate(day),
+      full: pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + time
+    };
+  }
+
+  function fmtDelta(e) {
+    var delta = Math.round((e[2] - e[1]) * 2) / 2;
+    return calc.fmtNumber(e[1]) + ' → ' + calc.fmtNumber(e[2]) + ' gg (' + (delta > 0 ? '+' : '') + calc.fmtNumber(delta) + ')';
+  }
+
+  /** History of the worked days, newest first, in a panel. */
+  function openHistory(ev, item) {
+    panels.open(anchorOf(ev), 'Storico giorni lavorati', function (body) {
+      var list = el('div', { cls: 'cp-history' });
+      item.h.slice().reverse().forEach(function (e) {
+        list.appendChild(el('div', { cls: 'cp-history-row' }, [
+          el('span', { cls: 'cp-history-when', text: fmtWhen(e[0]).full }),
+          el('span', { cls: 'cp-history-delta', text: fmtDelta(e) }),
+          el('span', { cls: 'cp-history-who', text: memberName(e[3]) })
+        ]));
+      });
+      body.appendChild(list);
+      body.appendChild(el('p', { cls: 'cp-popup-info', text: 'Le modifiche della stessa persona entro 15 minuti sono unite in un solo passaggio. Quando la card si riempie, i passaggi più vecchi vengono eliminati; l\'ultimo resta sempre.' }));
+    });
+  }
+
+  /** Last worked-days change ("agg. oggi 11:40"); a click opens the history. */
+  function effortWhen(item) {
+    var last = item.h && item.h[item.h.length - 1];
+    if (!last) return null;
+    var when = fmtWhen(last[0]);
+    return el('button', {
+      cls: 'cp-effort-when',
+      text: 'agg. ' + when.short + (item.h.length > 1 ? ' (' + item.h.length + ')' : ''),
+      attrs: { type: 'button', title: 'Ultima modifica ' + when.full + ' da ' + memberName(last[3]) + ': ' + fmtDelta(last) + '. Clicca per lo storico.' },
+      on: { click: function (ev) { openHistory(ev, item); } }
+    });
   }
 
   function metaDates(item, metrics) {
@@ -865,12 +897,11 @@
   }
 
   function renderSize() {
-    var size = store.sizeOf(state);
+    // The worked-days history is not counted: it is trimmed when room is needed.
+    var size = store.sizeOf(store.withoutHistory(state));
     var pct = Math.round((size / store.LIMIT) * 100);
     sizeEl.hidden = pct < 60;
-    var compact = store.sizeOf(state, 'utf16');
-    sizeEl.textContent = 'Spazio usato su questa card: ' + pct + '%' + (store.format() === 'utf16' ? ''
-      : '. Con il formato compatto (menu Checklist+ della bacheca) sarebbe il ' + Math.round((compact / store.LIMIT) * 100) + '%.');
+    sizeEl.textContent = 'Spazio usato su questa card: ' + pct + '%';
     sizeEl.classList.toggle('is-warn', pct >= 80);
   }
 
@@ -1153,9 +1184,7 @@
       people.loadClients(t).then(function (c) { boardClients = c; calc.setClients(c); }),
       t.board('members').catch(function () { return { members: [] }; }),
       people.loadAreas(t),
-      loadNatives(),
-      // Storage format of the board, before any write (base64 if unknown).
-      store.loadFormat(t)
+      loadNatives()
     ]).then(function (res) {
       members = (res[1].members || []).slice().sort(function (a, b) {
         return String(a.fullName || '').localeCompare(String(b.fullName || ''));

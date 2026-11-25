@@ -18,6 +18,7 @@
   var KEY = 'cp';
   var LIMIT = 4096;       // Trello hard limit for card/shared pluginData
   var SAFE_LIMIT = 4000;  // keep a margin for Trello's own serialization
+  var HISTORY_BUDGET = 3000; // worked-days history is trimmed above this (75%)
 
   var ID_RE = /^[a-z0-9]{1,12}$/;
   var MEMBER_RE = /^[a-f0-9]{24}$/;
@@ -73,6 +74,57 @@
     return isFinite(n) && n >= MIN_MINUTES && n <= MAX_MINUTES ? Math.floor(n) : 0;
   }
 
+  /*
+   * Worked-days history of an item: [[at, from, to, by], ...], oldest first.
+   * at: minutes since 1970 (UTC); from/to: worked days; by: member id or ''.
+   * Stored entries omit `by` when it is the assignee. Items saved by 1.19-1.20
+   * have a single last change (wa, wb, wp), converted here.
+   */
+  var MAX_HISTORY = 30;
+
+  function history(it) {
+    var raw = Array.isArray(it.h) ? it.h : (it.wa ? [[it.wa, it.wp, it.w, 'wb' in it ? it.wb : it.m]] : []);
+    var out = [];
+    raw.slice(-MAX_HISTORY).forEach(function (e) {
+      if (!Array.isArray(e) || e.length < 3) return;
+      var at = minutesOrZero(e[0]);
+      if (!at) return;
+      var by = e.length === 3 ? it.m : e[3];
+      out.push([at, effort(e[1]), effort(e[2]), MEMBER_RE.test(by) ? by : '']);
+    });
+    return out;
+  }
+
+  /** Copy of the state without history (what the space indicator measures). */
+  function withoutHistory(state) {
+    var copy = JSON.parse(JSON.stringify(state));
+    copy.l.forEach(function (l) { l.x.forEach(function (it) { it.h = []; }); });
+    return copy;
+  }
+
+  /**
+   * History never takes room from the checklists: while the card is over
+   * HISTORY_BUDGET, the oldest entries are dropped, always keeping the last
+   * change of every item. Mutates and returns the state.
+   */
+  function prune(state, fmt) {
+    var budget = HISTORY_BUDGET;
+    if (sizeOf(state, fmt) <= budget) return state;
+    var entries = [];
+    state.l.forEach(function (l) {
+      l.x.forEach(function (it) {
+        for (var k = 0; k < it.h.length - 1; k++) entries.push({ item: it, at: it.h[k][0] });
+      });
+    });
+    entries.sort(function (a, b) { return a.at - b.at; });
+    // Drop in chunks (oldest first) to limit the number of size checks.
+    var step = Math.max(1, Math.ceil(entries.length / 20));
+    for (var i = 0; i < entries.length && sizeOf(state, fmt) > budget; i += step) {
+      entries.slice(i, i + step).forEach(function (e) { e.item.h.shift(); });
+    }
+    return state;
+  }
+
   /** Strict schema validation: unknown fields are dropped, bad values reset. */
   function sanitize(raw) {
     var state = emptyState();
@@ -97,9 +149,7 @@
           dl: isoOrEmpty(it.dl),
           e: isoOrEmpty(it.e),
           w: effort(it.w),
-          wa: minutesOrZero(it.wa),
-          wb: MEMBER_RE.test(it.wb) ? it.wb : (it.wa && !('wb' in it) && MEMBER_RE.test(it.m) ? it.m : ''),
-          wp: effort(it.wp)
+          h: history(it)
         });
       });
       state.l.push(list);
@@ -122,10 +172,13 @@
           if (it.dl) o.dl = it.dl;
           if (it.e) o.e = it.e;
           if (it.w) o.w = it.w;
-          if (it.wa) {
-            o.wa = it.wa;
-            if (it.wb && it.wb !== it.m) o.wb = it.wb; // omitted when it is the assignee
-            if (it.wp) o.wp = it.wp;
+          if (it.h.length) {
+            // [at, from, to] when the editor is the assignee (the usual case),
+            // [at, from, to, 0] when unknown, [at, from, to, member] otherwise.
+            o.h = it.h.map(function (e) {
+              if (e[3] === it.m && it.m) return [e[0], e[1], e[2]];
+              return [e[0], e[1], e[2], e[3] || 0];
+            });
           }
           return o;
         });
@@ -135,31 +188,21 @@
   }
 
   /*
-   * Encodings. Trello counts characters, so the compressed data can be stored
-   * as UTF-16 (about 15 bits per character, prefix "~") instead of base64
-   * (6 bits per character): about 2.5 times more content per card.
-   * Both formats are always readable. Writing UTF-16 is switched on for the
-   * whole board from the "Formato compatto" page (board flag FORMAT_KEY), so
-   * it starts only once every member runs a version that can read it.
+   * Encodings. Trello counts characters (verified on Trello on 2026-11-25),
+   * so the compressed data is stored as UTF-16 (about 15 bits per character,
+   * prefix "~") instead of base64 (6 bits per character): about 2.5 times
+   * more content per card. Base64 data from earlier versions is still read.
    * If Trello ever refuses a UTF-16 value, this browser falls back to base64.
    */
   var UTF16_PREFIX = '~';
-  var FORMAT_KEY = 'cpf';         // board/shared: 'u16' when the compact format is on
   var FALLBACK_KEY = 'cp-enc-base64';
-  var useUtf16 = false;
+  var useUtf16 = true;
   var refused = false;
   try { if (!isNode && root.localStorage.getItem(FALLBACK_KEY)) refused = true; } catch (e) { /* storage unavailable */ }
 
   function setFormat(format) { useUtf16 = format === 'utf16'; }
   function format() { return useUtf16 && !refused ? 'utf16' : 'base64'; }
 
-  /** Reads the board flag; on any error keeps base64 (always safe). */
-  function loadFormat(t) {
-    return t.get('board', 'shared', FORMAT_KEY).then(function (v) {
-      setFormat(v === 'u16' ? 'utf16' : 'base64');
-      return format();
-    }, function () { setFormat('base64'); return format(); });
-  }
 
   function encode(state, fmt) {
     var json = JSON.stringify(compact(state));
@@ -216,7 +259,7 @@
       var state = decodeStrict(raw);
       if (!state) throw new UnreadableError();
       mutate(state);
-      var clean = sanitize(state);
+      var clean = prune(sanitize(state));
       var size = sizeOf(clean);
       if (size > SAFE_LIMIT) throw new SizeError(size);
       return t.set('card', 'shared', KEY, encode(clean)).then(function () {
@@ -244,10 +287,11 @@
     encode: encode,
     decode: decode,
     decodeStrict: decodeStrict,
-    FORMAT_KEY: FORMAT_KEY,
     setFormat: setFormat,
     format: format,
-    loadFormat: loadFormat,
+    prune: prune,
+    withoutHistory: withoutHistory,
+    HISTORY_BUDGET: HISTORY_BUDGET,
     isUtf16Value: function (v) { return typeof v === 'string' && v.charAt(0) === UTF16_PREFIX; },
     UnreadableError: UnreadableError,
     sizeOf: sizeOf,

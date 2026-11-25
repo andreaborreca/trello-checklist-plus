@@ -12,16 +12,16 @@
   var calc = window.CP.calc;
 
   // Absolute URL of the gray icon (Trello requires gray icons on the card back).
-  var ICON = new URL('./img/icon.svg?v=1.20.0', window.location.href).href;
+  var ICON = new URL('./img/icon.svg?v=1.21.0', window.location.href).href;
 
   // White variant for dark board headers.
-  var ICON_LIGHT = new URL('./img/icon-white.svg?v=1.20.0', window.location.href).href;
+  var ICON_LIGHT = new URL('./img/icon-white.svg?v=1.21.0', window.location.href).href;
 
   // Check-square icon for the overall badge (same idea as Trello's checklist badge).
-  var ICON_CHECK = new URL('./img/icon-check.svg?v=1.20.0', window.location.href).href;
+  var ICON_CHECK = new URL('./img/icon-check.svg?v=1.21.0', window.location.href).href;
 
   // Person icon for the badge with the viewer's own open tasks.
-  var ICON_PERSON = new URL('./img/icon-person.svg?v=1.20.0', window.location.href).href;
+  var ICON_PERSON = new URL('./img/icon-person.svg?v=1.21.0', window.location.href).href;
 
   /**
    * Height the section had the last time this card was open (saved by the
@@ -57,11 +57,11 @@
           return t.popup({
             title: 'Checklist+',
             items: [
-              { text: 'I miei task...', callback: page('I miei task', './mytasks.html?v=1.20.0', 480) },
-              { text: 'Esporta...',callback: page('Esporta Checklist+', './export.html?v=1.20.0', 330) },
-              { text: 'Formato compatto...', callback: page('Formato compatto', './migrate.html?v=1.20.0', 420) },
-              { text: 'Clienti della bacheca...', callback: page('Clienti', './clientlist.html?v=1.20.0', 340) },
-              { text: 'Aree del team...', callback: page('Aree del team', './areas.html?v=1.20.0', 380) }
+              { text: 'I miei task...', callback: page('I miei task', './mytasks.html?v=1.21.0', 480) },
+              { text: 'Esporta...',callback: page('Esporta Checklist+', './export.html?v=1.21.0', 330) },
+              { text: 'Backup e ripristino...', callback: page('Backup e ripristino', './backup.html?v=1.21.0', 460) },
+              { text: 'Clienti della bacheca...', callback: page('Clienti', './clientlist.html?v=1.21.0', 340) },
+              { text: 'Aree del team...', callback: page('Aree del team', './areas.html?v=1.21.0', 380) }
             ]
           });
         }
@@ -79,7 +79,7 @@
         content: {
           type: 'iframe',
           // Version in the URL so browsers never serve a stale cached page after an update.
-          url: t.signUrl('./section.html?v=1.20.0'),
+          url: t.signUrl('./section.html?v=1.21.0'),
           height: rememberedHeight(t)
         }
       };

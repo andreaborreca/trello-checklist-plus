@@ -49,6 +49,12 @@
     });
   }
 
+  /** Replaces the whole area map (backup restore). */
+  function saveAreas(t, map) {
+    var clean = sanitizeAreas(map);
+    return t.set('board', 'shared', AREAS_KEY, clean).then(function () { return clean; });
+  }
+
   /* ---- Board client list (key "cpk"): array of upper-case names ---- */
 
   var CLIENTS_KEY = 'cpk';
@@ -131,7 +137,7 @@
 
   var api = {
     AREAS: AREAS, NO_AREA: NO_AREA, areaName: areaName, sanitizeAreas: sanitizeAreas,
-    loadAreas: loadAreas, setArea: setArea,
+    loadAreas: loadAreas, setArea: setArea, saveAreas: saveAreas,
     sanitizeClients: sanitizeClients, loadClients: loadClients, saveClients: saveClients, displayName: displayName,
     initials: initials, avatarUrl: avatarUrl, avatarColor: avatarColor, avatarNode: avatarNode
   };

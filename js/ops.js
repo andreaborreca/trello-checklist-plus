@@ -37,6 +37,27 @@
 
   function clamp(n, min, max) { return Math.max(min, Math.min(max, n | 0)); }
 
+  var MERGE_MINUTES = 15;
+  var MAX_HISTORY = 30;
+
+  /**
+   * Worked-days history entry [at, from, to, by]. Changes by the same person
+   * within MERGE_MINUTES are merged into one step; a step that returns to its
+   * starting value disappears (e.g. +0.5 then -0.5).
+   */
+  function addHistory(item, at, from, to, by) {
+    var h = item.h || (item.h = []);
+    var last = h[h.length - 1];
+    if (last && last[3] === by && at - last[0] <= MERGE_MINUTES) {
+      last[0] = at;
+      last[2] = to;
+      if (last[1] === last[2]) h.pop();
+    } else {
+      h.push([at, from, to, by]);
+      if (h.length > MAX_HISTORY) h.splice(0, h.length - MAX_HISTORY);
+    }
+  }
+
   /**
    * Applies one op to a state (mutates it). Unknown ops and missing targets
    * are ignored, so a stale op never breaks the data.
@@ -64,8 +85,7 @@
           if (after === before) break; // replay of a change already saved
           if (after > before && !hit.item.s && op.today) hit.item.s = op.today;
           hit.item.w = after;
-          // Last change (shown next to the counter): when, who, previous value.
-          if (op.at) { hit.item.wa = op.at; hit.item.wb = op.by || ''; hit.item.wp = before; }
+          if (op.at) addHistory(hit.item, op.at, before, after, op.by || '');
         }
         break;
       case 'list':
