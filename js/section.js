@@ -262,6 +262,7 @@
 
   function reportError(err) {
     if (err && err.name === 'SizeError') showError(err.message + ' Elimina qualche elemento o accorcia i testi.');
+    else if (err && err.name === 'UnreadableError') showError(err.message);
     else showError('Salvataggio non riuscito: le ultime modifiche non sono state salvate. Riprova tra qualche secondo.');
     if (window.console) console.error('[Checklist+]', err);
   }
@@ -519,7 +520,7 @@
     }
     function save(w) {
       if (w === null || w === current()) return false;
-      apply({ k: 'effort', i: item.i, w: w, today: wd.todayIso() }, EFFORT_WAIT_MS);
+      apply({ k: 'effort', i: item.i, w: w, today: wd.todayIso(), at: Math.floor(Date.now() / 60000), by: context.member || '' }, EFFORT_WAIT_MS);
       return true;
     }
     function step(delta) {
@@ -555,8 +556,31 @@
       el('button', { cls: 'cp-step', text: '−', attrs: { type: 'button', title: 'Togli mezza giornata', 'aria-label': 'Togli mezza giornata', 'data-fkey': 'minus:' + item.i }, on: { click: function () { step(-0.5); } } }),
       input,
       el('button', { cls: 'cp-step', text: '+', attrs: { type: 'button', title: 'Aggiungi mezza giornata', 'aria-label': 'Aggiungi mezza giornata', 'data-fkey': 'plus:' + item.i }, on: { click: function () { step(0.5); } } }),
-      el('span', { cls: 'cp-meta-label', text: 'gg' })
+      el('span', { cls: 'cp-meta-label', text: 'gg' }),
+      effortWhen(item)
     ]);
+  }
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
+
+  /**
+   * Last worked-days change, short ("oggi 11:40", "ieri 9:05", "24 nov"),
+   * with who and the previous value in the tooltip.
+   */
+  function effortWhen(item) {
+    if (!item.wa) return null;
+    var d = new Date(item.wa * 60000);
+    var day = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+    var today = wd.todayIso();
+    var y = new Date(); y.setDate(y.getDate() - 1);
+    var yesterday = y.getFullYear() + '-' + pad2(y.getMonth() + 1) + '-' + pad2(y.getDate());
+    var time = d.getHours() + ':' + pad2(d.getMinutes());
+    var short = day === today ? 'oggi ' + time : day === yesterday ? 'ieri ' + time : calc.fmtChipDate(day);
+    var member = members.filter(function (m) { return m.id === item.wb; })[0];
+    var who = item.wb && item.wb === context.member ? 'te' : member ? (member.fullName || member.username) : '';
+    var tip = 'Giorni lavorati modificati il ' + pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() + ' alle ' + time +
+      (who ? ' da ' + who : '') + ': da ' + calc.fmtNumber(item.wp || 0) + ' a ' + calc.fmtNumber(item.w || 0) + ' gg';
+    return el('span', { cls: 'cp-effort-when', text: 'agg. ' + short, attrs: { title: tip } });
   }
 
   function metaDates(item, metrics) {
@@ -844,7 +868,9 @@
     var size = store.sizeOf(state);
     var pct = Math.round((size / store.LIMIT) * 100);
     sizeEl.hidden = pct < 60;
-    sizeEl.textContent = 'Spazio usato su questa card: ' + pct + '%';
+    var compact = store.sizeOf(state, 'utf16');
+    sizeEl.textContent = 'Spazio usato su questa card: ' + pct + '%' + (store.format() === 'utf16' ? ''
+      : '. Con il formato compatto (menu Checklist+ della bacheca) sarebbe il ' + Math.round((compact / store.LIMIT) * 100) + '%.');
     sizeEl.classList.toggle('is-warn', pct >= 80);
   }
 
@@ -1127,7 +1153,9 @@
       people.loadClients(t).then(function (c) { boardClients = c; calc.setClients(c); }),
       t.board('members').catch(function () { return { members: [] }; }),
       people.loadAreas(t),
-      loadNatives()
+      loadNatives(),
+      // Storage format of the board, before any write (base64 if unknown).
+      store.loadFormat(t)
     ]).then(function (res) {
       members = (res[1].members || []).slice().sort(function (a, b) {
         return String(a.fullName || '').localeCompare(String(b.fullName || ''));

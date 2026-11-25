@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<!-- Checklist+ popover: switch the board to the compact storage format and convert every card. -->
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Formato compatto</title>
+  <link rel="stylesheet" href="./css/section.css?v=1.20.0">
+</head>
+<body class="cp-popup-body">
+  <div id="cp-migrate" class="cp-popup">
+    <p class="cp-popup-info">Il formato compatto fa stare circa 2,5 volte più contenuto in ogni card. Prima di attivarlo, <strong>tutti i membri della bacheca devono aver ricaricato Trello</strong> (Ctrl+Shift+R) dopo l'aggiornamento di Checklist+: le versioni precedenti non sanno leggerlo.</p>
+    <p id="cp-mg-status" class="cp-export-status">Lettura delle card in corso...</p>
+    <div id="cp-mg-actions" hidden>
+      <button type="button" id="cp-mg-test" class="cp-btn cp-btn-block">1. Verifica che Trello accetti il formato</button>
+      <p id="cp-mg-test-result" class="cp-popup-info" hidden></p>
+      <label class="cp-export-month">
+        <input type="checkbox" id="cp-mg-confirm">
+        <span>2. Tutti hanno ricaricato Trello</span>
+      </label>
+      <button type="button" id="cp-mg-run" class="cp-btn cp-btn-primary cp-btn-block" disabled></button>
+    </div>
+    <p id="cp-popup-error" class="cp-error" hidden></p>
+    <p id="cp-mg-result" class="cp-popup-info" hidden></p>
+  </div>
+  <script src="https://p.trellocdn.com/power-up.min.js"></script>
+  <script src="./js/theme.js?v=1.20.0"></script>
+  <script src="./vendor/lz-string.min.js?v=1.20.0"></script>
+  <script src="./js/workdays.js?v=1.20.0"></script>
+  <script src="./js/calc.js?v=1.20.0"></script>
+  <script src="./js/store.js?v=1.20.0"></script>
+  <script src="./js/popcommon.js?v=1.20.0"></script>
+  <script src="./js/migrate.js?v=1.20.0"></script>
+</body>
+</html>

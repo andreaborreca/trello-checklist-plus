@@ -59,8 +59,13 @@
       case 'effort': // absolute worked days; the first day logged sets an empty start date
         hit = locate(state, op.i);
         if (hit) {
-          if (op.w > (hit.item.w || 0) && !hit.item.s && op.today) hit.item.s = op.today;
-          hit.item.w = Math.max(0, op.w);
+          var before = hit.item.w || 0;
+          var after = Math.max(0, op.w);
+          if (after === before) break; // replay of a change already saved
+          if (after > before && !hit.item.s && op.today) hit.item.s = op.today;
+          hit.item.w = after;
+          // Last change (shown next to the counter): when, who, previous value.
+          if (op.at) { hit.item.wa = op.at; hit.item.wb = op.by || ''; hit.item.wp = before; }
         }
         break;
       case 'list':

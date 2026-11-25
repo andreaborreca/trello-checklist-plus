@@ -65,6 +65,14 @@
     return Math.min(999, Math.round(n * 2) / 2);
   }
 
+  // Last worked-days change: minutes since 1970 (UTC), within 2024-2100.
+  var MIN_MINUTES = 28401120;
+  var MAX_MINUTES = 68380000;
+  function minutesOrZero(value) {
+    var n = Number(value);
+    return isFinite(n) && n >= MIN_MINUTES && n <= MAX_MINUTES ? Math.floor(n) : 0;
+  }
+
   /** Strict schema validation: unknown fields are dropped, bad values reset. */
   function sanitize(raw) {
     var state = emptyState();
@@ -88,7 +96,10 @@
           s: isoOrEmpty(it.s),
           dl: isoOrEmpty(it.dl),
           e: isoOrEmpty(it.e),
-          w: effort(it.w)
+          w: effort(it.w),
+          wa: minutesOrZero(it.wa),
+          wb: MEMBER_RE.test(it.wb) ? it.wb : (it.wa && !('wb' in it) && MEMBER_RE.test(it.m) ? it.m : ''),
+          wp: effort(it.wp)
         });
       });
       state.l.push(list);
@@ -111,6 +122,11 @@
           if (it.dl) o.dl = it.dl;
           if (it.e) o.e = it.e;
           if (it.w) o.w = it.w;
+          if (it.wa) {
+            o.wa = it.wa;
+            if (it.wb && it.wb !== it.m) o.wb = it.wb; // omitted when it is the assignee
+            if (it.wp) o.wp = it.wp;
+          }
           return o;
         });
         return out;
@@ -118,26 +134,71 @@
     };
   }
 
-  function encode(state) {
-    return LZ.compressToBase64(JSON.stringify(compact(state)));
+  /*
+   * Encodings. Trello counts characters, so the compressed data can be stored
+   * as UTF-16 (about 15 bits per character, prefix "~") instead of base64
+   * (6 bits per character): about 2.5 times more content per card.
+   * Both formats are always readable. Writing UTF-16 is switched on for the
+   * whole board from the "Formato compatto" page (board flag FORMAT_KEY), so
+   * it starts only once every member runs a version that can read it.
+   * If Trello ever refuses a UTF-16 value, this browser falls back to base64.
+   */
+  var UTF16_PREFIX = '~';
+  var FORMAT_KEY = 'cpf';         // board/shared: 'u16' when the compact format is on
+  var FALLBACK_KEY = 'cp-enc-base64';
+  var useUtf16 = false;
+  var refused = false;
+  try { if (!isNode && root.localStorage.getItem(FALLBACK_KEY)) refused = true; } catch (e) { /* storage unavailable */ }
+
+  function setFormat(format) { useUtf16 = format === 'utf16'; }
+  function format() { return useUtf16 && !refused ? 'utf16' : 'base64'; }
+
+  /** Reads the board flag; on any error keeps base64 (always safe). */
+  function loadFormat(t) {
+    return t.get('board', 'shared', FORMAT_KEY).then(function (v) {
+      setFormat(v === 'u16' ? 'utf16' : 'base64');
+      return format();
+    }, function () { setFormat('base64'); return format(); });
   }
 
-  function decode(encoded) {
-    if (typeof encoded !== 'string' || !encoded) return emptyState();
+  function encode(state, fmt) {
+    var json = JSON.stringify(compact(state));
+    var utf16 = (fmt || format()) === 'utf16';
+    return utf16 ? UTF16_PREFIX + LZ.compressToUTF16(json) : LZ.compressToBase64(json);
+  }
+
+  /** Decoded state, or null when a non-empty value cannot be read. */
+  function decodeStrict(encoded) {
+    if (encoded === undefined || encoded === null || encoded === '') return emptyState();
+    if (typeof encoded !== 'string') return null;
     try {
-      var json = LZ.decompressFromBase64(encoded);
-      return sanitize(json ? JSON.parse(json) : null);
+      var json = encoded.charAt(0) === UTF16_PREFIX
+        ? LZ.decompressFromUTF16(encoded.slice(1))
+        : LZ.decompressFromBase64(encoded);
+      var parsed = json ? JSON.parse(json) : null;
+      return parsed && Array.isArray(parsed.l) ? sanitize(parsed) : null;
     } catch (e) {
-      return emptyState();
+      return null;
     }
   }
 
+  /** Lenient decode for read-only views (badges, export): unreadable -> empty. */
+  function decode(encoded) {
+    return decodeStrict(encoded) || emptyState();
+  }
+
   /** Size as Trello will count it (stringified shared blob). */
-  function sizeOf(state) {
+  function sizeOf(state, fmt) {
     var o = {};
-    o[KEY] = encode(state);
+    o[KEY] = encode(state, fmt);
     return JSON.stringify(o).length;
   }
+
+  function UnreadableError() {
+    this.name = 'UnreadableError';
+    this.message = 'I dati di Checklist+ su questa card non sono leggibili da questa versione: ricarica la pagina di Trello (Ctrl+Shift+R).';
+  }
+  UnreadableError.prototype = Object.create(Error.prototype);
 
   /** Reads the current card state via the Power-Up client library. */
   function load(t) {
@@ -150,13 +211,24 @@
    * the window for concurrent edits by two users on the same card.
    */
   function update(t, mutate) {
-    return load(t).then(function (state) {
+    return t.get('card', 'shared', KEY).then(function (raw) {
+      // Never overwrite data this version cannot read (e.g. a newer format).
+      var state = decodeStrict(raw);
+      if (!state) throw new UnreadableError();
       mutate(state);
       var clean = sanitize(state);
       var size = sizeOf(clean);
       if (size > SAFE_LIMIT) throw new SizeError(size);
       return t.set('card', 'shared', KEY, encode(clean)).then(function () {
         return clean;
+      }, function (err) {
+        // Fallback: Trello refused the UTF-16 value, write base64 from now on.
+        if (format() !== 'utf16') throw err;
+        refused = true;
+        try { if (!isNode) root.localStorage.setItem(FALLBACK_KEY, '1'); } catch (e) { /* storage unavailable */ }
+        if (root.console) root.console.warn('[Checklist+] UTF-16 value refused, using base64', err);
+        if (sizeOf(clean) > SAFE_LIMIT) throw new SizeError(sizeOf(clean));
+        return t.set('card', 'shared', KEY, encode(clean)).then(function () { return clean; });
       });
     });
   }
@@ -171,6 +243,13 @@
     sanitize: sanitize,
     encode: encode,
     decode: decode,
+    decodeStrict: decodeStrict,
+    FORMAT_KEY: FORMAT_KEY,
+    setFormat: setFormat,
+    format: format,
+    loadFormat: loadFormat,
+    isUtf16Value: function (v) { return typeof v === 'string' && v.charAt(0) === UTF16_PREFIX; },
+    UnreadableError: UnreadableError,
     sizeOf: sizeOf,
     load: load,
     update: update
