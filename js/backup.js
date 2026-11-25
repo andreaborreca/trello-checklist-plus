@@ -37,10 +37,13 @@
   var runEl = document.getElementById('cp-bk-run');
   var resultEl = document.getElementById('cp-bk-result');
   var errorEl = document.getElementById('cp-popup-error');
+  var checkEl = document.getElementById('cp-bk-check');
+  var reportEl = document.getElementById('cp-bk-report');
 
   var board = { id: '', name: '' };
   var cards = [];     // every card of the board: {id, name}
   var plan = [];      // restore rows: {source, target, state, checkbox}
+  var withData = {};  // card id -> characters used by Checklist+ (absent when none)
   var backupBoard = null;
 
   function resize() { t.sizeTo('#cp-backup').catch(function () {}); }
@@ -169,8 +172,99 @@
 
   function selected() { return plan.filter(function (p) { return p.checkbox.checked; }); }
 
+  /* ---------------- dry run ---------------- */
+
+  var TEST_KEY = 'cpt';
+
+  /**
+   * One card, without writing it: schema, room on the card, exact round trip
+   * through the storage encoding, and comparison with the current state.
+   */
+  function checkOne(p) {
+    var state = store.prune(store.sanitize(p.state));
+    var problems = [];
+    if (store.sizeOf(state) > store.SAFE_LIMIT) problems.push('non entra nella card');
+    var back = store.decodeStrict(store.encode(state));
+    if (!back || JSON.stringify(back) !== JSON.stringify(state)) problems.push('i dati non si rileggono identici');
+    return t.get(p.target.id, 'shared', store.KEY).then(function (raw) {
+      var now = raw ? store.decodeStrict(raw) : store.emptyState();
+      var diff;
+      if (!now) diff = 'ora non leggibile, verrà sostituita';
+      else if (JSON.stringify(now) === JSON.stringify(state)) diff = 'identica allo stato attuale';
+      else diff = 'diversa: ' + countTasks(state) + ' task nel backup, ' + countTasks(now) + ' ora';
+      return { row: p, problems: problems, diff: diff, state: state };
+    });
+  }
+
+  /**
+   * Real write test on Trello, without touching any checklist: writes one
+   * card of the backup on a card without Checklist+ data under a separate
+   * key, reads it back, compares it and removes it.
+   */
+  function writeTest(sample) {
+    var value = store.encode(sample);
+    // A card without Checklist+, otherwise the one with the least data whose
+    // free room fits the test value (the limit counts every key of the card).
+    var room = function (c) { return store.LIMIT - 40 - (withData[c.id] || 0); };
+    var target = cards.filter(function (c) { return room(c) >= JSON.stringify(value).length; })
+      .sort(function (a, b) { return (withData[a.id] || 0) - (withData[b.id] || 0); })[0];
+    if (!target) return Promise.resolve('saltata: nessuna card ha spazio libero per la prova');
+    return t.set(target.id, 'shared', TEST_KEY, value).then(function () {
+      return t.get(target.id, 'shared', TEST_KEY);
+    }).then(function (back) {
+      var same = back === value && JSON.stringify(store.decodeStrict(back)) === JSON.stringify(sample);
+      return t.remove(target.id, 'shared', TEST_KEY).catch(function () {}).then(function () {
+        return same ? '' : 'Trello ha restituito dati diversi';
+      });
+    }, function (err) {
+      return t.remove(target.id, 'shared', TEST_KEY).catch(function () {}).then(function () {
+        return 'Trello ha rifiutato la scrittura' + (err && err.message ? ' (' + err.message + ')' : '');
+      });
+    });
+  }
+
+  function reportLine(text, cls) { reportEl.appendChild(el('p', cls || '', text)); }
+
+  checkEl.addEventListener('click', function () {
+    var rows = selected();
+    if (!rows.length) return;
+    checkEl.disabled = true;
+    reportEl.textContent = '';
+    reportEl.hidden = false;
+    reportLine('Verifica in corso...');
+    resize();
+    Promise.all(rows.map(checkOne)).then(function (results) {
+      // The largest valid card is the most demanding sample for the write test.
+      var valid = results.filter(function (r) { return !r.problems.length; });
+      var sample = valid.sort(function (a, b) { return store.sizeOf(b.state) - store.sizeOf(a.state); })[0];
+      var test = sample ? writeTest(sample.state) : Promise.resolve('saltata: nessuna card valida da provare');
+      return test.then(function (writeProblem) {
+        reportEl.textContent = '';
+        var bad = results.filter(function (r) { return r.problems.length; });
+        results.forEach(function (r) {
+          reportLine(r.row.target.name + ': ' + (r.problems.length ? r.problems.join(', ') : 'ok') + ' (' + r.diff + ')', r.problems.length ? 'cp-error' : '');
+        });
+        var skipped = /^saltata/.test(writeProblem);
+        var writeOk = !writeProblem;
+        reportLine('Prova di scrittura su Trello: ' + (writeProblem || 'ok, dati riletti identici e prova già rimossa') + '.', writeOk || skipped ? '' : 'cp-error');
+        if (bad.length || (!writeOk && !skipped)) {
+          reportLine('Il ripristino non è sicuro: deseleziona le card segnalate o mandami questo riepilogo. Nessuna card è stata modificata.', 'cp-error');
+        } else if (skipped) {
+          reportLine('I dati del backup sono validi (' + results.length + ' card), ma la scrittura su Trello non è stata provata. Nessuna card è stata modificata.');
+        } else {
+          reportLine('Il ripristino funzionerà: ' + results.length + ' card pronte. Nessuna card è stata modificata.', 'cp-bk-ok');
+        }
+      });
+    }).catch(function (err) {
+      reportEl.textContent = '';
+      reportLine('Verifica non riuscita: ' + (err && err.message ? err.message : err) + '. Nessuna card è stata modificata.', 'cp-error');
+    }).then(function () { checkEl.disabled = false; resize(); });
+  });
+
   function updateRun() {
     var n = selected().length;
+    reportEl.hidden = true;
+    checkEl.disabled = !n;
     runEl.textContent = n ? 'Ripristina ' + n + ' card' : 'Seleziona almeno una card';
     runEl.disabled = !n;
     resize();
@@ -252,7 +346,10 @@
       board = { id: res[0].id, name: res[0].name };
       cards = (res[1] || []).map(function (c) { return { id: c.id, name: c.name }; });
       return Promise.all(cards.map(function (c) {
-        return t.get(c.id, 'shared', store.KEY).then(function (raw) { return raw ? 1 : 0; }, function () { return 0; });
+        return t.get(c.id, 'shared', store.KEY).then(function (raw) {
+          if (raw) withData[c.id] = JSON.stringify({ cp: raw }).length;
+          return raw ? 1 : 0;
+        }, function () { return 0; });
       }));
     }).then(function (flags) {
       var n = flags.reduce(function (a, b) { return a + b; }, 0);

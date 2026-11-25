@@ -38,24 +38,16 @@
   function clamp(n, min, max) { return Math.max(min, Math.min(max, n | 0)); }
 
   var MERGE_MINUTES = 15;
-  var MAX_HISTORY = 30;
 
   /**
-   * Worked-days history entry [at, from, to, by]. Changes by the same person
-   * within MERGE_MINUTES are merged into one step; a step that returns to its
-   * starting value disappears (e.g. +0.5 then -0.5).
+   * Last worked-days change of an item, stored as h = [[at, from, to, by]]
+   * (only the latest: earlier changes are not kept). Changes by the same
+   * person within MERGE_MINUTES keep the starting value ("from 1 to 2.5").
    */
   function addHistory(item, at, from, to, by) {
-    var h = item.h || (item.h = []);
-    var last = h[h.length - 1];
-    if (last && last[3] === by && at - last[0] <= MERGE_MINUTES) {
-      last[0] = at;
-      last[2] = to;
-      if (last[1] === last[2]) h.pop();
-    } else {
-      h.push([at, from, to, by]);
-      if (h.length > MAX_HISTORY) h.splice(0, h.length - MAX_HISTORY);
-    }
+    var last = item.h && item.h[item.h.length - 1];
+    var start = last && last[3] === by && at - last[0] <= MERGE_MINUTES ? last[1] : from;
+    item.h = [[at, start, to, by]];
   }
 
   /**

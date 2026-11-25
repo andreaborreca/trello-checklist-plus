@@ -576,7 +576,7 @@
     var yesterday = y.getFullYear() + '-' + pad2(y.getMonth() + 1) + '-' + pad2(y.getDate());
     var time = d.getHours() + ':' + pad2(d.getMinutes());
     return {
-      short: day === wd.todayIso() ? 'oggi ' + time : day === yesterday ? 'ieri ' + time : calc.fmtChipDate(day),
+      short: (day === wd.todayIso() ? 'oggi' : day === yesterday ? 'ieri' : calc.fmtChipDate(day)) + ' ' + time,
       full: pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1) + '/' + d.getFullYear() + ' ' + time
     };
   }
@@ -586,32 +586,15 @@
     return calc.fmtNumber(e[1]) + ' → ' + calc.fmtNumber(e[2]) + ' gg (' + (delta > 0 ? '+' : '') + calc.fmtNumber(delta) + ')';
   }
 
-  /** History of the worked days, newest first, in a panel. */
-  function openHistory(ev, item) {
-    panels.open(anchorOf(ev), 'Storico giorni lavorati', function (body) {
-      var list = el('div', { cls: 'cp-history' });
-      item.h.slice().reverse().forEach(function (e) {
-        list.appendChild(el('div', { cls: 'cp-history-row' }, [
-          el('span', { cls: 'cp-history-when', text: fmtWhen(e[0]).full }),
-          el('span', { cls: 'cp-history-delta', text: fmtDelta(e) }),
-          el('span', { cls: 'cp-history-who', text: memberName(e[3]) })
-        ]));
-      });
-      body.appendChild(list);
-      body.appendChild(el('p', { cls: 'cp-popup-info', text: 'Le modifiche della stessa persona entro 15 minuti sono unite in un solo passaggio. Quando la card si riempie, i passaggi più vecchi vengono eliminati; l\'ultimo resta sempre.' }));
-    });
-  }
-
-  /** Last worked-days change ("agg. oggi 11:40"); a click opens the history. */
+  /** Last worked-days change, always with date and time ("agg. 24 nov 15:30"). */
   function effortWhen(item) {
     var last = item.h && item.h[item.h.length - 1];
     if (!last) return null;
     var when = fmtWhen(last[0]);
-    return el('button', {
+    return el('span', {
       cls: 'cp-effort-when',
-      text: 'agg. ' + when.short + (item.h.length > 1 ? ' (' + item.h.length + ')' : ''),
-      attrs: { type: 'button', title: 'Ultima modifica ' + when.full + ' da ' + memberName(last[3]) + ': ' + fmtDelta(last) + '. Clicca per lo storico.' },
-      on: { click: function (ev) { openHistory(ev, item); } }
+      text: 'agg. ' + when.short,
+      attrs: { title: 'Giorni lavorati modificati il ' + when.full + ' da ' + memberName(last[3]) + ' (' + fmtDelta(last) + ')' }
     });
   }
 

@@ -75,12 +75,13 @@
   }
 
   /*
-   * Worked-days history of an item: [[at, from, to, by], ...], oldest first.
+   * Last worked-days change of an item: [[at, from, to, by]] (1.21.0 kept up
+   * to 30 entries: only the newest is read).
    * at: minutes since 1970 (UTC); from/to: worked days; by: member id or ''.
    * Stored entries omit `by` when it is the assignee. Items saved by 1.19-1.20
    * have a single last change (wa, wb, wp), converted here.
    */
-  var MAX_HISTORY = 30;
+  var MAX_HISTORY = 1; // only the last change is kept
 
   function history(it) {
     var raw = Array.isArray(it.h) ? it.h : (it.wa ? [[it.wa, it.wp, it.w, 'wb' in it ? it.wb : it.m]] : []);

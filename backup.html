@@ -6,11 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Backup</title>
-  <link rel="stylesheet" href="./css/section.css?v=1.21.0">
+  <link rel="stylesheet" href="./css/section.css?v=1.21.1">
 </head>
 <body class="cp-popup-body">
   <div id="cp-backup" class="cp-popup">
-    <p class="cp-popup-info">Il backup è un file con tutte le Checklist+ della bacheca (checklist, task, date, membri, giorni lavorati e storico), più clienti e aree. Ripristinandolo, le card tornano esattamente allo stato del backup.</p>
+    <p class="cp-popup-info">Il backup è un file con tutte le Checklist+ della bacheca (checklist, task, date, membri, giorni lavorati e ultima modifica), più clienti e aree. Ripristinandolo, le card tornano esattamente allo stato del backup.</p>
     <p id="cp-bk-status" class="cp-export-status">Lettura delle card in corso...</p>
     <button type="button" id="cp-bk-download" class="cp-btn cp-btn-primary cp-btn-block" disabled>Scarica backup</button>
 
@@ -27,19 +27,21 @@
         <span>Ripristina anche clienti e aree della bacheca</span>
       </label>
       <p class="cp-popup-info">Prima del ripristino viene scaricato in automatico un backup dello stato attuale.</p>
+      <button type="button" id="cp-bk-check" class="cp-btn cp-btn-block">Verifica senza ripristinare</button>
+      <div id="cp-bk-report" class="cp-bk-report" hidden></div>
       <button type="button" id="cp-bk-run" class="cp-btn cp-btn-primary cp-btn-block"></button>
     </div>
     <p id="cp-popup-error" class="cp-error" hidden></p>
     <p id="cp-bk-result" class="cp-popup-info" hidden></p>
   </div>
   <script src="https://p.trellocdn.com/power-up.min.js"></script>
-  <script src="./js/theme.js?v=1.21.0"></script>
-  <script src="./vendor/lz-string.min.js?v=1.21.0"></script>
-  <script src="./js/workdays.js?v=1.21.0"></script>
-  <script src="./js/calc.js?v=1.21.0"></script>
-  <script src="./js/store.js?v=1.21.0"></script>
-  <script src="./js/people.js?v=1.21.0"></script>
-  <script src="./js/popcommon.js?v=1.21.0"></script>
-  <script src="./js/backup.js?v=1.21.0"></script>
+  <script src="./js/theme.js?v=1.21.1"></script>
+  <script src="./vendor/lz-string.min.js?v=1.21.1"></script>
+  <script src="./js/workdays.js?v=1.21.1"></script>
+  <script src="./js/calc.js?v=1.21.1"></script>
+  <script src="./js/store.js?v=1.21.1"></script>
+  <script src="./js/people.js?v=1.21.1"></script>
+  <script src="./js/popcommon.js?v=1.21.1"></script>
+  <script src="./js/backup.js?v=1.21.1"></script>
 </body>
 </html>
